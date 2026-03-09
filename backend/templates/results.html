@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+  <style>.sortable { cursor: pointer; user-select: none; } .sortable:hover { color: var(--accent-cyan); }</style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link active" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Scan Results</div>
+        <div class="page-subtitle" id="resultsMeta">LOADING…</div>
+      </div>
+      <div style="display:flex;gap:0.75rem">
+        <a href="/api/export/scans/csv" class="btn btn-secondary btn-sm" title="Export all scans">⬇ Export All CSV</a>
+        <a href="{{ url_for('pages.discovery') }}" class="btn btn-primary btn-sm">⊙ Host Discovery</a>
+        <a href="{{ url_for('pages.scan_port') }}" class="btn btn-primary btn-sm">⊕ Port Scan</a>
+      </div>
+    </div>
+
+    <div id="alertBox" class="alert alert-error hidden"></div>
+
+    <!-- Filters -->
+    <div class="panel mb-2">
+      <div class="panel-title" style="margin-bottom:0.75rem">FILTERS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center">
+        <div>
+          <label class="form-label" style="font-size:0.7rem;margin-bottom:2px">Scan Type</label>
+          <select class="form-control" id="filterType" style="min-width:140px">
+            <option value="">All</option>
+            <option value="host-discovery">Host Discovery</option>
+            <option value="tcp-connect">TCP Connect</option>
+            <option value="tcp-syn">TCP SYN</option>
+            <option value="ping">Ping</option>
+            <option value="udp">UDP</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.7rem;margin-bottom:2px">Status</label>
+          <select class="form-control" id="filterStatus" style="min-width:120px">
+            <option value="">All</option>
+            <option value="completed">Completed</option>
+            <option value="running">Running</option>
+            <option value="pending">Pending</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.7rem;margin-bottom:2px">From Date</label>
+          <input type="date" class="form-control" id="filterDateFrom" style="min-width:130px">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.7rem;margin-bottom:2px">To Date</label>
+          <input type="date" class="form-control" id="filterDateTo" style="min-width:130px">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:0.7rem;margin-bottom:2px">Search Target</label>
+          <input type="text" class="form-control" id="filterTarget" placeholder="IP or hostname" style="min-width:160px">
+        </div>
+        <div style="align-self:flex-end">
+          <button type="button" class="btn btn-secondary btn-sm" id="filterClear">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="data-table-wrap" id="tableWrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="created_at" title="Sort by date">#</th>
+            <th class="sortable" data-sort="target">Target</th>
+            <th class="sortable" data-sort="scan_type">Type</th>
+            <th class="sortable" data-sort="ports">Ports</th>
+            <th class="sortable" data-sort="status">Status</th>
+            <th>Progress</th>
+            <th class="sortable" data-sort="duration_seconds">Duration</th>
+            <th class="sortable" data-sort="created_at">Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="scansBody">
+          <tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div id="paginationWrap" class="hidden" style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;flex-wrap:wrap;gap:0.5rem">
+      <div class="mono" style="font-size:0.8rem;color:var(--text-muted)" id="paginationInfo"></div>
+      <div style="display:flex;gap:0.5rem">
+        <button type="button" class="btn btn-secondary btn-sm" id="pagePrev">← Prev</button>
+        <span class="mono" style="align-self:center;font-size:0.8rem" id="pageNum">Page 1</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="pageNext">Next →</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Scan Detail Modal ──────────────────────────────────────── -->
+<div class="modal-backdrop hidden" id="detailModal">
+  <div class="modal-box" style="max-width:800px">
+    <div class="modal-header">
+      <div class="modal-title">SCAN DETAIL — #<span id="mdScanId"></span></div>
+      <button class="modal-close" id="detailClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="mdLoading" style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.8rem">Loading…</div>
+      <div id="mdContent" class="hidden">
+        <!-- Port scan metadata (hidden for ping) -->
+        <div id="mdPortScanMeta" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+          <div><div class="stat-label">Target</div><div class="mono text-cyan" id="mdTarget">—</div></div>
+          <div><div class="stat-label">Status</div><div id="mdStatus">—</div></div>
+          <div><div class="stat-label">Duration</div><div class="mono" id="mdDuration">—</div></div>
+          <div><div class="stat-label">Scan Type</div><div class="mono" id="mdType">—</div></div>
+          <div><div class="stat-label">Ports Range</div><div class="mono" id="mdPorts">—</div></div>
+          <div><div class="stat-label">Open Ports</div><div class="mono text-green" id="mdOpenCount">—</div></div>
+        </div>
+
+        <!-- Ping sweep metadata (hidden for port scans) -->
+        <div id="mdPingMeta" class="hidden" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+          <div><div class="stat-label">Target</div><div class="mono text-cyan" id="mdPingTarget">—</div></div>
+          <div><div class="stat-label">Status</div><div id="mdPingStatus">—</div></div>
+          <div><div class="stat-label">Duration</div><div class="mono" id="mdPingDuration">—</div></div>
+          <div><div class="stat-label">Hosts Up</div><div class="mono text-green" id="mdHostsUp">—</div></div>
+          <div><div class="stat-label">Hosts Down</div><div class="mono" id="mdHostsDown">—</div></div>
+          <div><div class="stat-label">Total Scanned</div><div class="mono" id="mdTotalScanned">—</div></div>
+        </div>
+
+        <div id="mdError" class="alert alert-error hidden mb-2"></div>
+
+        <!-- Export buttons -->
+        <div style="display:flex;gap:0.75rem;margin-bottom:1rem">
+          <a id="mdExportCsv" href="#" class="btn btn-secondary btn-sm">⬇ CSV</a>
+          <a id="mdExportPdf" href="#" class="btn btn-secondary btn-sm">⬇ PDF</a>
+          <button id="mdCveBtn" class="btn btn-secondary btn-sm">🔍 CVE Lookup</button>
+        </div>
+
+        <!-- Open ports table (port scans only) -->
+        <div id="mdPortScanSection">
+          <div class="panel-title">OPEN PORTS</div>
+          <div id="mdPortsWrap">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>Version</th><th>State</th><th>Banner</th></tr></thead>
+                <tbody id="mdPortsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="mdNoPorts" class="hidden" style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.8rem;padding:0.75rem 0">No open ports found.</div>
+        </div>
+
+        <!-- Ping sweep results (ping only) -->
+        <div id="mdPingSection" class="hidden">
+          <div class="panel-title">PING SWEEP RESULTS — LIVE HOSTS</div>
+          <div id="mdHostsList" style="font-family:var(--font-mono);font-size:0.85rem;max-height:300px;overflow-y:auto;padding:0.75rem 0">
+          </div>
+        </div>
+
+        <!-- CVE Results (port scans only) -->
+        <div id="mdCveSection" class="hidden mt-2">
+          <div class="panel-title mt-2">CVE VULNERABILITIES</div>
+          <div id="mdCveContent" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-secondary)">
+            Loading CVEs…
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ───────────────────────────────────── -->
+<div class="modal-backdrop hidden" id="deleteModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">CONFIRM DELETE</div>
+      <button class="modal-close" id="deleteClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="mono" style="color:var(--text-secondary);font-size:0.85rem">
+        Delete scan #<span id="dmScanId" class="text-red"></span>? This cannot be undone.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="deleteCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/socket.js"></script>
+<script>
+  function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  function badge(status) {
+    const m = {completed:'badge-completed',running:'badge-running',pending:'badge-pending',failed:'badge-failed'};
+    return `<span class="badge ${m[status]||'badge-pending'}">${esc(status)}</span>`;
+  }
+
+  function progressBar(pct, status) {
+    if (status==='completed') return `<span class="text-green mono" style="font-size:0.75rem">100%</span>`;
+    if (status==='failed')    return `<span class="text-red mono" style="font-size:0.75rem">failed</span>`;
+    if (status==='pending')   return `<span class="text-muted mono" style="font-size:0.75rem">queued</span>`;
+    return `<div class="progress-wrap" style="width:80px"><div class="progress-bar" style="width:${pct||0}%"></div></div>`;
+  }
+
+  let scans = [];
+  let pollTimer = null;
+  let deleteScanId = null;
+  let deleteRow   = null;
+
+  const PAGE_SIZE = 10;
+  let currentPage = 1;
+  let sortBy = 'created_at';
+  let sortDir = 'desc';
+
+  function getFilters() {
+    return {
+      type: document.getElementById('filterType').value.trim(),
+      status: document.getElementById('filterStatus').value.trim(),
+      dateFrom: document.getElementById('filterDateFrom').value,
+      dateTo: document.getElementById('filterDateTo').value,
+      target: document.getElementById('filterTarget').value.trim().toLowerCase(),
+    };
+  }
+
+  function applyFilters(list) {
+    const f = getFilters();
+    return list.filter(s => {
+      if (f.type && s.scan_type !== f.type) return false;
+      if (f.status && s.status !== f.status) return false;
+      const d = (s.date || s.created_at || '').slice(0, 10);
+      if (f.dateFrom && d < f.dateFrom) return false;
+      if (f.dateTo && d > f.dateTo) return false;
+      if (f.target && !(s.target || '').toLowerCase().includes(f.target)) return false;
+      return true;
+    });
+  }
+
+  function compare(a, b) {
+    let va = a[sortBy], vb = b[sortBy];
+    if (sortBy === 'created_at' || sortBy === 'date') {
+      va = va || ''; vb = vb || '';
+    }
+    if (sortBy === 'duration_seconds') {
+      va = va != null ? va : -1; vb = vb != null ? vb : -1;
+    }
+    if (va < vb) return sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  }
+
+  function renderRow(s, rowNum) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = s.id;
+    const topoBtn = (s.scan_type === 'host-discovery')
+      ? `<a class="btn btn-secondary btn-sm topo-btn" href="/network-radar?scan_id=${s.id}" style="margin-left:4px">Topology</a>`
+      : '';
+    tr.innerHTML = `
+      <td class="mono">${rowNum}</td>
+      <td class="text-cyan">${esc(s.target)}</td>
+      <td class="mono">${esc(s.scan_type)}</td>
+      <td class="mono">${esc(s.ports)}</td>
+      <td>${badge(s.status)}</td>
+      <td>${progressBar(s.progress, s.status)}</td>
+      <td class="mono">${s.duration_seconds!=null?s.duration_seconds+'s':'—'}</td>
+      <td class="mono">${(s.date||s.created_at||'').slice(0,10)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm view-btn" data-id="${s.id}">View</button>
+        ${topoBtn}
+        <button class="btn btn-danger  btn-sm del-btn" data-id="${s.id}" style="margin-left:4px">Del</button>
+      </td>`;
+    return tr;
+  }
+
+  function renderTable() {
+    const filtered = applyFilters(scans);
+    filtered.sort(compare);
+    const totalFiltered = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+    currentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filtered.slice(start, start + PAGE_SIZE);
+
+    const tbody = document.getElementById('scansBody');
+    tbody.innerHTML = '';
+    pageRows.forEach((s, i) => {
+      const rowNum = start + i + 1;
+      const tr = renderRow(s, rowNum);
+      tr.querySelector('.view-btn').addEventListener('click', () => openDetail(s.id, s.target));
+      tr.querySelector('.del-btn').addEventListener('click', () => confirmDelete(s.id, tr));
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('resultsMeta').textContent =
+      `${scans.length} SCANS TOTAL — ${totalFiltered} MATCH FILTER — ${scans.filter(s=>s.status==='completed').length} COMPLETED`;
+
+    const pagWrap = document.getElementById('paginationWrap');
+    if (totalFiltered > PAGE_SIZE) {
+      pagWrap.classList.remove('hidden');
+      pagWrap.style.display = 'flex';
+      document.getElementById('paginationInfo').textContent =
+        `Showing ${start + 1}-${Math.min(start + PAGE_SIZE, totalFiltered)} of ${totalFiltered}`;
+      document.getElementById('pageNum').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('pagePrev').disabled = currentPage <= 1;
+      document.getElementById('pageNext').disabled = currentPage >= totalPages;
+    } else {
+      pagWrap.classList.add('hidden');
+    }
+  }
+
+  async function loadScans(silent) {
+    const data = await Api.getJSON('/api/scans/');
+    if (!data) return;
+    scans = data.scans || [];
+
+    const tbody = document.getElementById('scansBody');
+    if (!scans.length) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-muted)">
+        No scans yet. <a href="{{ url_for('pages.discovery') }}">Host Discovery</a> or <a href="{{ url_for('pages.scan') }}">Port Scan</a></td></tr>`;
+      document.getElementById('resultsMeta').textContent = '0 SCANS';
+      document.getElementById('paginationWrap').classList.add('hidden');
+      return;
+    }
+
+    renderTable();
+
+    const hasActive = scans.some(s => s.status==='running'||s.status==='pending');
+    if (hasActive && !pollTimer) {
+      pollTimer = setInterval(() => loadScans(true), 3000);
+    } else if (!hasActive && pollTimer) {
+      clearInterval(pollTimer); pollTimer = null;
+    }
+  }
+
+  async function openDetail(id, target) {
+    const modal = document.getElementById('detailModal');
+    document.getElementById('mdScanId').textContent = id;
+    document.getElementById('mdLoading').classList.remove('hidden');
+    document.getElementById('mdContent').classList.add('hidden');
+    modal.classList.remove('hidden');
+
+    const data = await Api.getJSON(`/api/scans/${id}`);
+    document.getElementById('mdLoading').classList.add('hidden');
+    if (!data) return;
+    document.getElementById('mdContent').classList.remove('hidden');
+
+    const results = data.results || {};
+    const errEl = document.getElementById('mdError');
+    if (data.error_message) { errEl.textContent = data.error_message; errEl.classList.remove('hidden'); }
+    else errEl.classList.add('hidden');
+
+    document.getElementById('mdExportCsv').href = `/api/export/scans/${id}/csv`;
+    document.getElementById('mdExportPdf').href = `/api/export/scans/${id}/pdf`;
+
+    if (data.scan_type === 'ping' || data.scan_type === 'host-discovery') {
+      renderPingResults(data, results);
+    } else {
+      renderPortScanResults(id, data, results);
+    }
+    document.getElementById('mdCveSection').classList.add('hidden');
+  }
+
+  function renderPingResults(data, results) {
+    document.getElementById('mdPortScanMeta').classList.add('hidden');
+    document.getElementById('mdPortScanSection').classList.add('hidden');
+    document.getElementById('mdCveBtn').style.display = 'none';
+    document.getElementById('mdPingMeta').classList.remove('hidden');
+    document.getElementById('mdPingMeta').style.display = 'grid';
+    document.getElementById('mdPingSection').classList.remove('hidden');
+    document.getElementById('mdPingTarget').textContent = data.target;
+    document.getElementById('mdPingStatus').innerHTML = badge(data.status);
+    document.getElementById('mdPingDuration').textContent = data.duration_seconds!=null ? data.duration_seconds+'s' : '—';
+    const hostsUp = results.hosts_up || results.hosts_scanned || [];
+    const totalScanned = results.total_hosts_scanned || (results.discovery_results && results.discovery_results.length) || 0;
+    const hostsDown = results.hosts_down_count ?? (totalScanned - hostsUp.length);
+    document.getElementById('mdHostsUp').textContent = hostsUp.length;
+    document.getElementById('mdHostsDown').textContent = hostsDown;
+    document.getElementById('mdTotalScanned').textContent = totalScanned;
+    const listEl = document.getElementById('mdHostsList');
+    if (!hostsUp.length) listEl.innerHTML = '<span style="color:var(--text-muted)">No live hosts found.</span>';
+    else listEl.innerHTML = hostsUp.map(h => `<div class="text-green" style="padding:0.2rem 0">${esc(h)}</div>`).join('');
+    if (data.scan_type === 'host-discovery' && results.discovery_results && results.discovery_results.length) {
+      const portScanBase = '{{ url_for("pages.scan_port") }}';
+      const tbl = `<table class="data-table" style="margin-top:0.5rem"><thead><tr><th>IP Address</th><th>Hostname</th><th>Ping</th><th>Status</th><th>Actions</th></tr></thead><tbody>${
+        results.discovery_results.map(r =>
+          `<tr><td class="text-cyan mono">${esc(r.ip)}</td><td class="mono">${esc(r.hostname||'—')}</td><td class="mono">${esc(r.latency||'—')}</td><td>${r.status==='alive'?'<span class="text-green">Alive</span>':'<span class="text-muted">Dead</span>'}</td><td>${r.status==='alive'?`<a href="${portScanBase}?import=${encodeURIComponent(r.ip)}" class="btn btn-primary btn-sm">Port Scan</a>`:'—'}</td></tr>`
+        ).join('')
+      }</tbody></table>`;
+      listEl.insertAdjacentHTML('beforeend', '<div class="panel-title" style="margin-top:0.75rem">ALL HOSTS</div>' + tbl);
+    }
+  }
+
+  function renderPortScanResults(scanId, data, results) {
+    document.getElementById('mdPingMeta').classList.add('hidden');
+    document.getElementById('mdPingSection').classList.add('hidden');
+    document.getElementById('mdCveBtn').style.display = '';
+    document.getElementById('mdPortScanMeta').classList.remove('hidden');
+    document.getElementById('mdPortScanSection').classList.remove('hidden');
+    document.getElementById('mdTarget').textContent = data.target;
+    document.getElementById('mdStatus').innerHTML = badge(data.status);
+    document.getElementById('mdDuration').textContent = data.duration_seconds!=null ? data.duration_seconds+'s' : '—';
+    document.getElementById('mdType').textContent = data.scan_type;
+    document.getElementById('mdPorts').textContent = data.ports || '—';
+    const ports = results.open_ports || [];
+    document.getElementById('mdOpenCount').textContent = ports.length;
+    const tbody = document.getElementById('mdPortsBody');
+    if (!ports.length) {
+      document.getElementById('mdPortsWrap').classList.add('hidden');
+      document.getElementById('mdNoPorts').classList.remove('hidden');
+    } else {
+      document.getElementById('mdPortsWrap').classList.remove('hidden');
+      document.getElementById('mdNoPorts').classList.add('hidden');
+      tbody.innerHTML = ports.map(p =>
+        `<tr><td class="text-green mono">${p.port}</td><td class="mono">${esc(p.protocol||'tcp')}</td><td class="mono">${esc(p.service||'')}</td><td class="mono" style="font-size:0.72rem">${esc(p.version||'—')}</td><td>${p.state==='open'?'<span class="text-green">open</span>':'<span class="text-yellow">'+esc(p.state)+'</span>'}</td><td class="mono" style="color:var(--text-muted);font-size:0.72rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(p.banner||'—')}</td></tr>`
+      ).join('');
+    }
+    const cveBtn = document.getElementById('mdCveBtn');
+    cveBtn.onclick = () => loadCVEs(scanId);
+    cveBtn.disabled = data.status !== 'completed';
+  }
+
+  async function loadCVEs(scanId) {
+    document.getElementById('mdCveSection').classList.remove('hidden');
+    document.getElementById('mdCveContent').innerHTML =
+      `<span style="color:var(--text-muted)">Querying NVD database…</span>`;
+
+    const data = await Api.getJSON(`/api/scans/${scanId}/cves`);
+    if (!data) {
+      document.getElementById('mdCveContent').innerHTML =
+        `<span class="text-red">Failed to load CVE data.</span>`;
+      return;
+    }
+    const cves = data.cves || {};
+    const services = Object.keys(cves);
+    if (!services.length) {
+      document.getElementById('mdCveContent').innerHTML =
+        `<span style="color:var(--text-muted)">No CVE data found for these services.</span>`;
+      return;
+    }
+
+    let html = '';
+    services.forEach(svc => {
+      const list = cves[svc] || [];
+      html += `<div style="margin-bottom:1rem">
+        <div style="color:var(--accent-cyan);margin-bottom:0.4rem;font-size:0.72rem;letter-spacing:1px">
+          SERVICE: ${esc(svc.toUpperCase())} — ${list.length} CVE(s)
+        </div>`;
+      list.forEach(c => {
+        const sevClass = `sev-${(c.severity||'unknown').toLowerCase()}`;
+        html += `<div style="border:1px solid var(--border);border-radius:4px;padding:0.6rem;margin-bottom:0.4rem;background:var(--bg-surface)">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.3rem">
+            <a href="${c.url}" target="_blank" style="color:var(--accent-cyan);font-size:0.78rem">${esc(c.id)}</a>
+            <span class="${sevClass}" style="font-size:0.65rem;letter-spacing:1px">${esc(c.severity)}</span>
+            ${c.cvss_score!=null?`<span style="color:var(--text-muted);font-size:0.65rem">CVSS:${c.cvss_score}</span>`:''}
+            <span style="color:var(--text-muted);font-size:0.65rem;margin-left:auto">${esc(c.published)}</span>
+          </div>
+          <div style="color:var(--text-secondary);font-size:0.73rem;line-height:1.4">${esc(c.description)}</div>
+        </div>`;
+      });
+      html += '</div>';
+    });
+    document.getElementById('mdCveContent').innerHTML = html;
+  }
+
+  function confirmDelete(id, tr) {
+    deleteScanId = id;
+    deleteRow    = tr;
+    document.getElementById('dmScanId').textContent = id;
+    document.getElementById('deleteModal').classList.remove('hidden');
+  }
+
+  document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+    if (!deleteScanId) return;
+    const res = await Api.del(`/api/scans/${deleteScanId}`);
+    if (res && res.ok) {
+      scans = scans.filter(s => s.id !== deleteScanId);
+      document.getElementById('deleteModal').classList.add('hidden');
+      Api.toast('Scan deleted', 'success');
+      deleteScanId = null; deleteRow = null;
+      renderTable();
+    } else {
+      Api.toast('Delete failed', 'error');
+    }
+  });
+
+  document.getElementById('detailClose').addEventListener('click', () =>
+    document.getElementById('detailModal').classList.add('hidden'));
+  document.getElementById('deleteClose').addEventListener('click', () =>
+    document.getElementById('deleteModal').classList.add('hidden'));
+  document.getElementById('deleteCancelBtn').addEventListener('click', () =>
+    document.getElementById('deleteModal').classList.add('hidden'));
+
+  ['detailModal','deleteModal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+    });
+  });
+
+  function updateRowProgress(scanId, status, progress) {
+    const s = scans.find(x => x.id === scanId);
+    if (s) { s.status = status; s.progress = progress; }
+    renderTable();
+    if (status === 'completed' || status === 'failed') {
+      loadScans(true);
+    }
+  }
+
+  document.getElementById('filterType').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('filterStatus').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('filterDateFrom').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('filterDateTo').addEventListener('change', () => { currentPage = 1; renderTable(); });
+  document.getElementById('filterTarget').addEventListener('input', () => { currentPage = 1; renderTable(); });
+  document.getElementById('filterClear').addEventListener('click', () => {
+    document.getElementById('filterType').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterTarget').value = '';
+    currentPage = 1;
+    renderTable();
+  });
+
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (sortBy === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortBy = key; sortDir = 'asc'; }
+      currentPage = 1;
+      renderTable();
+    });
+  });
+
+  document.getElementById('pagePrev').addEventListener('click', () => { currentPage--; renderTable(); });
+  document.getElementById('pageNext').addEventListener('click', () => { currentPage++; renderTable(); });
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me || !me.authenticated) return;
+    document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); Api.logout(); });
+
+    WS.init();
+    WS.onScanUpdate(p => updateRowProgress(p.scan_id, p.status, p.progress));
+
+    await loadScans(false);
+
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('open');
+    if (openId) {
+      const id = parseInt(openId, 10);
+      if (id) openDetail(id, '');
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

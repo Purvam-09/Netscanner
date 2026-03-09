@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Radar — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+  <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+  <style>
+    /* Page-specific tweaks to match cyberpunk theme */
+    #cy {
+      width: 100%;
+      height: calc(100vh - 210px);
+      min-height: 520px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: radial-gradient(ellipse at center, rgba(0, 255, 159, 0.07), rgba(0, 0, 0, 0) 55%),
+                  linear-gradient(180deg, rgba(10, 18, 24, 0.55), rgba(10, 18, 24, 0.25));
+      box-shadow: 0 0 35px rgba(0, 255, 159, 0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .radar-meta {
+      display:flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+    .radar-pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.35rem 0.6rem;
+      background: rgba(0,0,0,0.18);
+    }
+    .radar-pill b { color: var(--accent-green); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">⬡</span>
+        <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">MAIN</div>
+        <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+        <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+        <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+        <a class="nav-link active" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+        <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+        <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+        <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+        <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+        <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+        <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="sidebarAvatar">U</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebarUsername">…</div>
+            <div class="user-role" id="sidebarRole">user</div>
+          </div>
+        </div>
+        <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Network Radar</div>
+          <div class="page-subtitle">VISUAL MAP OF LATEST HOST DISCOVERY (ALIVE HOSTS ONLY)</div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:center">
+          <div class="form-group" style="margin:0;min-width:320px">
+            <label class="form-label" for="scanSelect" style="margin-bottom:0.35rem">Select Host Discovery Scan</label>
+            <select class="form-control" id="scanSelect" style="height:40px;padding:0.55rem 0.75rem"></select>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="{{ url_for('pages.discovery') }}">⊙ Run Discovery</a>
+          <button class="btn btn-primary btn-sm" id="btnRefresh">⟳ Refresh</button>
+        </div>
+      </div>
+
+      <div class="radar-meta" style="margin-bottom:0.9rem">
+        <div class="radar-pill">Router: <b>Center Node</b></div>
+        <div class="radar-pill">Hosts shown: <b id="hostCount">0</b></div>
+        <div class="radar-pill"><b id="source-label">Source: Latest Host Discovery</b></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">NETWORK MAP</div>
+        <div id="cy" aria-label="Network Radar Visualization"></div>
+        <div class="form-hint" style="margin-top:0.75rem">
+          Click a node to view details. This visualization does not include vulnerabilities, CVEs, or risk scoring.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Node Details Modal -->
+  <div id="nodeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="nodeModalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="nodeModalTitle">NODE DETAILS</div>
+        <button class="modal-close" id="nodeModalClose" aria-label="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem">
+          <div>
+            <div class="stat-label">Hostname</div>
+            <div class="mono text-cyan" id="mdHostname">—</div>
+          </div>
+          <div>
+            <div class="stat-label">IP Address</div>
+            <div class="mono text-cyan" id="mdIp">—</div>
+          </div>
+          <div>
+            <div class="stat-label">Status</div>
+            <div id="mdStatus">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="nodeModalOk">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script>
+    let cy = null;
+    let discoveryScansById = new Map();
+    let isLatestMode = false;
+
+    function setSourceLabelText(text) {
+      const el = document.getElementById('source-label');
+      if (el) el.innerText = text;
+    }
+
+    function setSourceLabelForScan(scanId) {
+      const scan = discoveryScansById.get(String(scanId));
+      if (!scan) {
+        setSourceLabelText('Source: Host Discovery');
+        return;
+      }
+
+      if (isLatestMode) {
+        setSourceLabelText(`Source: Latest Host Discovery (Scan #${scan.scan_id})`);
+        return;
+      }
+
+      setSourceLabelText(
+        `Source: Scan #${scan.scan_id} — ${scan.target} (${scan.alive_hosts} hosts alive)`
+      );
+    }
+
+    function showNodeModal(data) {
+      const modal = document.getElementById('nodeModal');
+      document.getElementById('mdHostname').textContent = data.hostname || '—';
+      document.getElementById('mdIp').textContent = data.ip || '—';
+      document.getElementById('mdStatus').innerHTML =
+        (data.status === 'router')
+          ? '<span class=\"badge badge-pending\">Router</span>'
+          : '<span class=\"badge badge-completed\">Alive</span>';
+      modal.classList.remove('hidden');
+    }
+
+    function hideNodeModal() {
+      document.getElementById('nodeModal').classList.add('hidden');
+    }
+
+    function buildElements(hosts) {
+      const els = [];
+      els.push({
+        data: {
+          id: 'router',
+          hostname: 'Router',
+          ip: '',
+          status: 'router',
+          label: 'Router\\nCENTER'
+        }
+      });
+
+      for (const h of hosts) {
+        const id = `h_${h.ip}`;
+        const hn = (h.hostname || '').trim();
+        const label = (hn ? hn : 'Host') + '\\n' + h.ip;
+        els.push({ data: { id, hostname: hn, ip: h.ip, status: 'alive', label } });
+        els.push({ data: { id: `e_${id}`, source: 'router', target: id }});
+      }
+      return els;
+    }
+
+    function initGraph(hosts) {
+      document.getElementById('hostCount').textContent = String(hosts.length);
+
+      const elements = buildElements(hosts);
+
+      if (cy) {
+        cy.destroy();
+      }
+
+      cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements,
+        layout: { name: 'cose' },
+        wheelSensitivity: 0.2,
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#19ffb3',
+              'label': 'data(label)',
+              'color': '#d8ffef',
+              'text-wrap': 'wrap',
+              'text-max-width': 120,
+              'font-family': 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace',
+              'font-size': 10,
+              'text-outline-color': '#061015',
+              'text-outline-width': 2,
+              'border-width': 1,
+              'border-color': '#0a2a2a',
+              'width': 36,
+              'height': 36,
+              'shadow-blur': 18,
+              'shadow-opacity': 0.35,
+              'shadow-color': '#00ff9f'
+            }
+          },
+          {
+            selector: 'node#router',
+            style: {
+              'background-color': '#2ea3ff',
+              'border-color': '#0f2b4a',
+              'width': 52,
+              'height': 52,
+              'shadow-color': '#2ea3ff',
+              'shadow-opacity': 0.45,
+              'shadow-blur': 22
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'width': 2,
+              'line-color': '#123038',
+              'target-arrow-color': '#123038',
+              'curve-style': 'bezier',
+              'opacity': 0.9
+            }
+          },
+          {
+            selector: 'node:selected',
+            style: {
+              'border-width': 2,
+              'border-color': '#ffffff'
+            }
+          }
+        ]
+      });
+
+      cy.on('tap', 'node', (evt) => {
+        const n = evt.target;
+        showNodeModal({
+          hostname: n.data('hostname'),
+          ip: n.data('ip'),
+          status: n.data('status')
+        });
+      });
+    }
+
+    async function loadNetworkMap() {
+      const data = await Api.getJSON('/api/network-map');
+      const hosts = Array.isArray(data) ? data : [];
+      const alive = hosts.filter(h => h && h.status === 'alive' && h.ip);
+      initGraph(alive);
+    }
+
+    async function loadNetworkMapForScan(scanId) {
+      const data = await Api.getJSON(`/api/network-map/${scanId}`);
+      if (!data) {
+        Api.toast('Could not load topology for this scan.', 'error');
+        initGraph([]);
+        return;
+      }
+      const hosts = Array.isArray(data) ? data : [];
+      const alive = hosts.filter(h => h && (h.status ? h.status === 'alive' : true) && h.ip);
+      initGraph(alive);
+    }
+
+    function setQueryParamScanId(scanId) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('scan_id', String(scanId));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    async function loadDiscoveryScans() {
+      const scans = await Api.getJSON('/api/discovery-scans');
+      const list = Array.isArray(scans) ? scans : [];
+
+      const sel = document.getElementById('scanSelect');
+      sel.innerHTML = '';
+      discoveryScansById = new Map();
+
+      if (!list.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No Host Discovery scans found (run discovery first)';
+        sel.appendChild(opt);
+        sel.disabled = true;
+        setSourceLabelText('Source: Latest Host Discovery');
+        return [];
+      }
+
+      sel.disabled = false;
+      list.forEach(s => {
+        if (s && (s.scan_id !== undefined && s.scan_id !== null)) {
+          discoveryScansById.set(String(s.scan_id), s);
+        }
+        const opt = document.createElement('option');
+        opt.value = String(s.scan_id);
+        opt.textContent = `Scan #${s.scan_id} — ${s.target} (${s.alive_hosts} hosts alive)`;
+        sel.appendChild(opt);
+      });
+
+      return list;
+    }
+
+    function bindUI() {
+      document.getElementById('btnRefresh').addEventListener('click', async () => {
+        const sel = document.getElementById('scanSelect');
+        const v = (sel && sel.value) ? sel.value : '';
+        if (v) {
+          setSourceLabelForScan(v);
+          await loadNetworkMapForScan(v);
+        } else {
+          setSourceLabelText('Source: Latest Host Discovery');
+          await loadNetworkMap();
+        }
+      });
+      document.getElementById('scanSelect').addEventListener('change', async (e) => {
+        const scanId = e.target.value;
+        if (!scanId) return;
+        isLatestMode = false;
+        setQueryParamScanId(scanId);
+        setSourceLabelForScan(scanId);
+        await loadNetworkMapForScan(scanId);
+      });
+      document.getElementById('nodeModalClose').addEventListener('click', hideNodeModal);
+      document.getElementById('nodeModalOk').addEventListener('click', hideNodeModal);
+      document.getElementById('nodeModal').addEventListener('click', (e) => {
+        if (e.target.id === 'nodeModal') hideNodeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') hideNodeModal();
+      });
+      document.getElementById('logoutBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        Api.logout();
+      });
+    }
+
+    async function init() {
+      bindUI();
+      const me = await Api.initPage(); // populate sidebar + ensure session ok
+      if (!me || !me.authenticated) return;
+      const list = await loadDiscoveryScans();
+
+      const params = new URLSearchParams(window.location.search);
+      const scanIdParam = params.get('scan_id');
+      const sel = document.getElementById('scanSelect');
+
+      if (scanIdParam && sel && Array.from(sel.options).some(o => o.value === scanIdParam)) {
+        sel.value = scanIdParam;
+        isLatestMode = false;
+        setSourceLabelForScan(scanIdParam);
+        await loadNetworkMapForScan(scanIdParam);
+        return;
+      }
+
+      // Default behavior: load latest discovery scan (first option) if no scan_id provided
+      if (list && list.length && sel) {
+        const latestId = String(list[0].scan_id);
+        sel.value = latestId;
+        isLatestMode = true;
+        setSourceLabelForScan(latestId);
+        await loadNetworkMapForScan(latestId);
+        return;
+      }
+
+      await loadNetworkMap();
+    }
+
+    init();
+  </script>
+</body>
+</html>
+

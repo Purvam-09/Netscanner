@@ -1,0 +1,290 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   NetScanner — components.css
+   Reusable component styles that extend cyberpunk.css.
+   Import AFTER cyberpunk.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Scan type tag pills ─────────────────────────────────────────────────── */
+.scan-type-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+  }
+  
+  .scan-type-tag.tcp-connect { color: var(--accent-green);  border-color: rgba(0,255,159,0.3); }
+  .scan-type-tag.tcp-syn     { color: var(--accent-cyan);   border-color: rgba(0,212,255,0.3); }
+  .scan-type-tag.udp         { color: var(--accent-yellow); border-color: rgba(255,215,0,0.3); }
+  .scan-type-tag.ping        { color: var(--accent-purple); border-color: rgba(179,71,234,0.3); }
+  
+  /* ── Info key-value grid ─────────────────────────────────────────────────── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .info-item { }
+  
+  .info-item .info-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  
+  .info-item .info-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+  
+  /* ── Divider ─────────────────────────────────────────────────────────────── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.25rem 0;
+  }
+  
+  /* ── Empty state ─────────────────────────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+  }
+  
+  .empty-state .empty-icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 0.75rem;
+    opacity: 0.4;
+  }
+  
+  .empty-state .empty-title {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    margin-bottom: 0.4rem;
+  }
+  
+  .empty-state .empty-sub {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+  
+  .empty-state .empty-sub a {
+    color: var(--accent-green);
+  }
+  
+  /* ── Loading spinner ─────────────────────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 255, 159, 0.2);
+    border-top-color: var(--accent-green);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+  }
+  
+  .spinner-lg {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* ── Skeleton loading ────────────────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-elevated) 25%,
+      rgba(0,255,159,0.05) 50%,
+      var(--bg-elevated) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: var(--radius);
+    height: 14px;
+  }
+  
+  @keyframes skeleton-shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+  
+  /* ── Copy-to-clipboard button ────────────────────────────────────────────── */
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    transition: all 0.15s;
+  }
+  
+  .copy-btn:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
+  
+  .copy-btn.copied {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
+  
+  /* ── Tooltip ─────────────────────────────────────────────────────────────── */
+  [data-tooltip] {
+    position: relative;
+    cursor: help;
+  }
+  
+  [data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    white-space: nowrap;
+    padding: 4px 8px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+  }
+  
+  [data-tooltip]:hover::after {
+    opacity: 1;
+  }
+  
+  /* ── Port severity indicator ─────────────────────────────────────────────── */
+  .port-row-critical { background: rgba(255, 26, 26, 0.04); }
+  .port-row-high     { background: rgba(255, 60, 90, 0.04); }
+  
+  /* ── Scan progress inline (for tables) ──────────────────────────────────── */
+  .inline-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+  }
+  
+  .inline-progress-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+  
+  .inline-progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  
+  .inline-progress-pct {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    min-width: 28px;
+    text-align: right;
+  }
+  
+  /* ── Nav badge (notification count) ─────────────────────────────────────── */
+  .nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-red);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    margin-left: auto;
+  }
+  
+  /* ── Two-column form layout ──────────────────────────────────────────────── */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+  
+  /* ── Table action button group ───────────────────────────────────────────── */
+  .action-group {
+    display: flex;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  
+  /* ── Glow text effect ────────────────────────────────────────────────────── */
+  .glow-green  { text-shadow: 0 0 8px rgba(0,255,159,0.8); }
+  .glow-cyan   { text-shadow: 0 0 8px rgba(0,212,255,0.8); }
+  .glow-red    { text-shadow: 0 0 8px rgba(255,60,90,0.8); }
+  .glow-yellow { text-shadow: 0 0 8px rgba(255,215,0,0.8); }
+  
+  /* ── Panel header with action button ─────────────────────────────────────── */
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  
+  .panel-header .panel-title {
+    margin-bottom: 0;
+  }
+  
+  /* ── Scrollbar styling ───────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg-void);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-bright);
+  }

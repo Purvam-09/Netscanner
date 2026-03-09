@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/auth.css">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="auth-logo-icon">⬡</span>
+        <div class="auth-logo-text">NETSCANNER</div>
+        <div class="auth-logo-sub">NEW OPERATOR REGISTRATION</div>
+      </div>
+
+      <div id="alertBox" class="alert hidden"></div>
+
+      <form id="signupForm" novalidate autocomplete="off">
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">◈</span>
+            <input class="form-control" type="text" id="username" placeholder="operator_handle" required>
+          </div>
+          <div class="field-error" id="usernameErr">3–64 chars: letters, digits, _, -, .</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <div class="input-wrap">
+            <span class="input-icon">✉</span>
+            <input class="form-control" type="email" id="email" placeholder="operator@domain.com" required>
+          </div>
+          <div class="field-error" id="emailErr">Valid email required</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password (min 8 chars)</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input class="form-control" type="password" id="password" placeholder="••••••••" required>
+          </div>
+          <div class="field-error" id="passErr">Minimum 8 characters</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="confirm">Confirm Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔒</span>
+            <input class="form-control" type="password" id="confirm" placeholder="••••••••" required>
+          </div>
+          <div class="field-error" id="confirmErr">Passwords do not match</div>
+        </div>
+
+        <button type="submit" class="btn-auth" id="submitBtn">
+          <span id="btnText">CREATE ACCOUNT</span>
+          <span id="btnSpinner" style="display:none">CREATING…</span>
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>EXISTING USER</span></div>
+      <div class="auth-links"><a href="{{ url_for('pages.login') }}">← Back to login</a></div>
+    </div>
+  </div>
+
+  <script>
+    const form     = document.getElementById('signupForm');
+    const alertBox = document.getElementById('alertBox');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function showAlert(msg, type = 'error') {
+      alertBox.textContent = msg;
+      alertBox.className = `alert alert-${type}`;
+    }
+
+    function setLoading(v) {
+      submitBtn.disabled = v;
+      document.getElementById('btnText').style.display  = v ? 'none' : '';
+      document.getElementById('btnSpinner').style.display = v ? '' : 'none';
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      ['usernameErr','emailErr','passErr','confirmErr'].forEach(id => {
+        document.getElementById(id).classList.remove('visible');
+      });
+      ['username','email','password','confirm'].forEach(id => {
+        document.getElementById(id).classList.remove('is-invalid');
+      });
+
+      const username = document.getElementById('username').value.trim();
+      const email    = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+      const confirm  = document.getElementById('confirm').value;
+
+      let valid = true;
+
+      if (!username || username.length < 3 || !/^[a-zA-Z0-9_\-.]+$/.test(username)) {
+        document.getElementById('usernameErr').classList.add('visible');
+        document.getElementById('username').classList.add('is-invalid');
+        valid = false;
+      }
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        document.getElementById('emailErr').classList.add('visible');
+        document.getElementById('email').classList.add('is-invalid');
+        valid = false;
+      }
+      if (password.length < 8) {
+        document.getElementById('passErr').classList.add('visible');
+        document.getElementById('password').classList.add('is-invalid');
+        valid = false;
+      }
+      if (password !== confirm) {
+        document.getElementById('confirmErr').classList.add('visible');
+        document.getElementById('confirm').classList.add('is-invalid');
+        valid = false;
+      }
+      if (!valid) return;
+
+      setLoading(true);
+      try {
+        const res  = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password }),
+          credentials: 'include',
+        });
+        const data = await res.json();
+
+        if (res.status === 201) {
+          showAlert('Account created! Redirecting to login…', 'success');
+          setTimeout(() => window.location.replace('{{ url_for("pages.login") }}'), 1500);
+        } else {
+          showAlert(data.error || 'Registration failed.');
+          setLoading(false);
+        }
+      } catch (_) {
+        showAlert('Cannot reach server. Run: python run.py');
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

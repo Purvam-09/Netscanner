@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link active" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Admin Panel</div>
+        <div class="page-subtitle">SYSTEM ADMINISTRATION</div>
+      </div>
+    </div>
+
+    <div id="accessDenied" class="alert alert-error hidden">Access denied. Admin only.</div>
+    <div id="adminContent" class="hidden">
+
+      <!-- Stats -->
+      <div class="stats-grid mb-3">
+        <div class="stat-card green"><div class="stat-label">Total Users</div><div class="stat-value green" id="stUsers">—</div></div>
+        <div class="stat-card cyan"><div class="stat-label">Total Scans</div><div class="stat-value cyan" id="stScans">—</div></div>
+        <div class="stat-card yellow"><div class="stat-label">Active Scans</div><div class="stat-value" id="stActive">—</div></div>
+      </div>
+
+      <!-- Top targets -->
+      <div class="panel mb-3">
+        <div class="panel-title">TOP SCAN TARGETS</div>
+        <div id="topTargets" class="mono" style="font-size:0.78rem;color:var(--text-secondary)">—</div>
+      </div>
+
+      <!-- Users table -->
+      <div class="panel mb-3">
+        <div class="panel-title">ALL OPERATORS</div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Username</th><th>Email</th><th>Role</th><th>Scans</th><th>Last Login</th><th>Action</th></tr></thead>
+            <tbody id="usersBody"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- All scans table -->
+      <div class="panel">
+        <div class="panel-title">ALL SCANS</div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>User</th><th>Target</th><th>Type</th><th>Status</th><th>Duration</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody id="scansBody"><tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="/assets/js/api.js"></script>
+<script>
+  function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  function badge(status) {
+    const m={completed:'badge-completed',running:'badge-running',pending:'badge-pending',failed:'badge-failed'};
+    return `<span class="badge ${m[status]||'badge-pending'}">${esc(status)}</span>`;
+  }
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me?.authenticated) return;
+    document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); Api.logout(); });
+
+    if (me.role !== 'admin') {
+      document.getElementById('accessDenied').classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('adminContent').classList.remove('hidden');
+
+    const [stats, users, scans] = await Promise.all([
+      Api.getJSON('/api/admin/stats'),
+      Api.getJSON('/api/admin/users'),
+      Api.getJSON('/api/admin/scans'),
+    ]);
+
+    if (stats) {
+      document.getElementById('stUsers').textContent  = stats.total_users;
+      document.getElementById('stScans').textContent  = stats.total_scans;
+      document.getElementById('stActive').textContent = stats.active_scans;
+
+      const topHtml = (stats.top_targets||[]).map(t =>
+        `<div style="margin-bottom:3px"><span class="text-cyan">${esc(t.target)}</span>
+          <span style="color:var(--text-muted);margin-left:0.5rem">${t.count} scans</span></div>`
+      ).join('') || '<span class="text-muted">No data</span>';
+      document.getElementById('topTargets').innerHTML = topHtml;
+    }
+
+    if (users?.users) {
+      const tbody = document.getElementById('usersBody');
+      tbody.innerHTML = users.users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td class="text-cyan">${esc(u.username)}</td>
+          <td class="mono" style="color:var(--text-muted)">${esc(u.email)}</td>
+          <td>${u.role==='admin'?'<span class="badge badge-admin">ADMIN</span>':'<span class="badge badge-user">USER</span>'}</td>
+          <td class="mono">${u.scan_count}</td>
+          <td class="mono" style="color:var(--text-muted)">${u.last_login?(u.last_login.slice(0,10)):('—')}</td>
+          <td>
+            ${u.role==='admin'
+              ? `<button class="btn btn-secondary btn-sm" onclick="setRole(${u.id},'user',this)">Demote</button>`
+              : `<button class="btn btn-primary btn-sm"   onclick="setRole(${u.id},'admin',this)">Promote</button>`
+            }
+          </td>
+        </tr>`).join('');
+    }
+
+    if (scans?.scans) {
+      const tbody = document.getElementById('scansBody');
+      tbody.innerHTML = scans.scans.map(s => `
+        <tr>
+          <td>${s.id}</td>
+          <td class="mono" style="color:var(--text-muted)">${esc(s.username)}</td>
+          <td class="text-cyan">${esc(s.target)}</td>
+          <td class="mono">${esc(s.scan_type)}</td>
+          <td>${badge(s.status)}</td>
+          <td class="mono">${s.duration_seconds!=null?s.duration_seconds+'s':'—'}</td>
+          <td class="mono">${(s.created_at||'').slice(0,10)}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="adminDelete(${s.id},this)">Del</button>
+          </td>
+        </tr>`).join('');
+    }
+  }
+
+  async function setRole(userId, role, btn) {
+    btn.disabled = true;
+    const res = await Api.patch(`/api/admin/users/${userId}`, { role });
+    if (res?.ok) { Api.toast(`User set to ${role}`, 'success'); init(); }
+    else { Api.toast('Failed', 'error'); btn.disabled = false; }
+  }
+
+  async function adminDelete(scanId, btn) {
+    if (!confirm(`Delete scan #${scanId}?`)) return;
+    btn.disabled = true;
+    const res = await Api.del(`/api/admin/scans/${scanId}`);
+    if (res?.ok) { btn.closest('tr').remove(); Api.toast('Deleted','success'); }
+    else { Api.toast('Failed','error'); btn.disabled = false; }
+  }
+
+  init();
+</script>
+</body>
+</html>

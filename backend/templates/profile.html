@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link active" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Profile</div>
+        <div class="page-subtitle">OPERATOR SETTINGS & STATISTICS</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
+
+      <!-- Profile card -->
+      <div class="panel">
+        <div class="panel-title">OPERATOR DETAILS</div>
+
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+          <div id="profileAvatar" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--accent-green);
+            display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);
+            font-size:1.5rem;color:var(--accent-green);background:var(--bg-elevated)">U</div>
+          <div>
+            <div class="mono text-primary" style="font-size:1.1rem" id="profUsername">—</div>
+            <div class="mono text-muted" style="font-size:0.72rem" id="profEmail">—</div>
+            <div style="margin-top:4px" id="profRoleBadge"></div>
+          </div>
+        </div>
+
+        <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-muted);margin-bottom:1.5rem">
+          <div>Member since: <span class="text-cyan" id="profCreated">—</span></div>
+          <div style="margin-top:4px">Last login: <span class="text-cyan" id="profLastLogin">—</span></div>
+        </div>
+
+        <div id="profAlert" class="alert hidden"></div>
+
+        <form id="profileForm">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input class="form-control" type="text" id="pfUsername" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Avatar Color</label>
+            <div style="display:flex;gap:0.75rem;align-items:center">
+              <input class="form-control" type="color" id="pfColor" style="width:60px;padding:2px;height:36px">
+              <span class="mono text-muted" style="font-size:0.75rem">Accent colour for your avatar</span>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+      </div>
+
+      <!-- Stats + Password -->
+      <div style="display:flex;flex-direction:column;gap:1.5rem">
+
+        <!-- Stats -->
+        <div class="panel">
+          <div class="panel-title">SCAN STATISTICS</div>
+          <div class="stats-grid" style="grid-template-columns:1fr 1fr">
+            <div class="stat-card green" style="padding:1rem">
+              <div class="stat-label">Total</div>
+              <div class="stat-value green" id="psTotal">—</div>
+            </div>
+            <div class="stat-card cyan" style="padding:1rem">
+              <div class="stat-label">Completed</div>
+              <div class="stat-value cyan" id="psCompleted">—</div>
+            </div>
+            <div class="stat-card red" style="padding:1rem">
+              <div class="stat-label">Failed</div>
+              <div class="stat-value red" id="psFailed" style="color:var(--accent-red)">—</div>
+            </div>
+            <div class="stat-card yellow" style="padding:1rem">
+              <div class="stat-label">Scheduled</div>
+              <div class="stat-value" id="psScheduled">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="panel">
+          <div class="panel-title">CHANGE PASSWORD</div>
+          <div id="pwAlert" class="alert hidden"></div>
+          <form id="passwordForm">
+            <div class="form-group">
+              <label class="form-label">Current Password</label>
+              <input class="form-control" type="password" id="pwCurrent" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password (min 8 chars)</label>
+              <input class="form-control" type="password" id="pwNew" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm New Password</label>
+              <input class="form-control" type="password" id="pwConfirm" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Password</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="/assets/js/api.js"></script>
+<script>
+  function showAlert(elId, msg, type='error') {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.className = `alert alert-${type}`;
+  }
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me?.authenticated) return;
+    document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); Api.logout(); });
+
+    const prof = await Api.getJSON('/api/profile/');
+    if (prof) {
+      document.getElementById('profUsername').textContent  = prof.username;
+      document.getElementById('profEmail').textContent     = prof.email;
+      document.getElementById('profCreated').textContent   = (prof.created_at||'').slice(0,10);
+      document.getElementById('profLastLogin').textContent = prof.last_login?(prof.last_login.slice(0,16)):('never');
+
+      const badge = prof.role==='admin'
+        ? '<span class="badge badge-admin">ADMIN</span>'
+        : '<span class="badge badge-user">USER</span>';
+      document.getElementById('profRoleBadge').innerHTML = badge;
+
+      const av = document.getElementById('profileAvatar');
+      av.textContent = (prof.username||'U')[0].toUpperCase();
+      av.style.borderColor = prof.avatar_color || '#00ff9f';
+      av.style.color       = prof.avatar_color || '#00ff9f';
+
+      document.getElementById('pfUsername').value = prof.username;
+      document.getElementById('pfColor').value    = prof.avatar_color || '#00ff9f';
+    }
+
+    const stats = await Api.getJSON('/api/profile/stats');
+    if (stats) {
+      document.getElementById('psTotal').textContent     = stats.total_scans;
+      document.getElementById('psCompleted').textContent = stats.completed_scans;
+      document.getElementById('psFailed').textContent    = stats.failed_scans;
+      document.getElementById('psScheduled').textContent = stats.scheduled_scans;
+    }
+
+    document.getElementById('profileForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const res = await Api.patch('/api/profile/', {
+        username:     document.getElementById('pfUsername').value.trim(),
+        avatar_color: document.getElementById('pfColor').value,
+      });
+      const data = res ? await res.json() : null;
+      if (res?.ok) {
+        Api.toast('Profile updated!', 'success');
+        await Api.initPage();
+      } else {
+        showAlert('profAlert', data?.error || 'Failed');
+        document.getElementById('profAlert').classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const newPw  = document.getElementById('pwNew').value;
+      const confPw = document.getElementById('pwConfirm').value;
+
+      if (newPw !== confPw) {
+        showAlert('pwAlert','Passwords do not match');
+        document.getElementById('pwAlert').classList.remove('hidden');
+        return;
+      }
+
+      const res  = await Api.post('/api/profile/password', {
+        current_password: document.getElementById('pwCurrent').value,
+        new_password:     newPw,
+      });
+      const data = res ? await res.json() : null;
+      if (res?.ok) {
+        Api.toast('Password updated!', 'success');
+        document.getElementById('passwordForm').reset();
+        document.getElementById('pwAlert').classList.add('hidden');
+      } else {
+        showAlert('pwAlert', data?.error || 'Failed');
+        document.getElementById('pwAlert').classList.remove('hidden');
+      }
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

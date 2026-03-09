@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Discovery — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link active" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Host Discovery</div>
+        <div class="page-subtitle">FIND LIVE HOSTS ON YOUR NETWORK — ANGRY IP STYLE</div>
+      </div>
+    </div>
+
+    <div id="formAlert" class="alert alert-error hidden mb-2"></div>
+
+    <!-- Scan input panel -->
+    <div class="panel mb-2">
+      <div class="panel-title">SCAN PARAMETERS</div>
+      <div class="radio-group" role="radiogroup" style="margin-bottom:1rem">
+        <label class="radio-option">
+          <input type="radio" name="inputMode" value="range" id="inputModeRange" checked>
+          <span class="radio-label">Start IP — End IP</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="inputMode" value="cidr" id="inputModeCidr">
+          <span class="radio-label">CIDR notation</span>
+        </label>
+      </div>
+
+      <div id="rangeInputs" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="form-group">
+          <label class="form-label">Start IP</label>
+          <input class="form-control" type="text" id="startIp" placeholder="192.168.1.1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End IP</label>
+          <input class="form-control" type="text" id="endIp" placeholder="192.168.1.254">
+        </div>
+      </div>
+      <div id="cidrInputWrap" class="form-group hidden">
+        <label class="form-label">CIDR</label>
+        <input class="form-control" type="text" id="cidrInput" placeholder="192.168.1.0/24">
+        <div class="form-hint">Example: 192.168.1.0/24</div>
+      </div>
+
+      <button type="button" class="btn btn-primary mt-2" id="scanBtn">
+        <span id="scanBtnText">⊙ START DISCOVERY</span>
+        <span id="scanBtnSpin" class="hidden">◌ SCANNING…</span>
+      </button>
+    </div>
+
+    <!-- Results panel -->
+    <div class="panel">
+      <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+        <span>DISCOVERY RESULTS</span>
+        <button type="button" class="btn btn-primary btn-sm" id="scanSelectedBtn" disabled>
+          ⊕ Scan Selected Hosts
+        </button>
+      </div>
+
+      <div id="resultsPlaceholder" class="mono" style="color:var(--text-muted);padding:2rem;text-align:center">
+        Enter a range or CIDR and start discovery to see results.
+      </div>
+
+      <div id="resultsWrap" class="hidden">
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:40px">
+                  <input type="checkbox" id="selectAll" title="Select all alive">
+                </th>
+                <th>IP Address</th>
+                <th>Hostname</th>
+                <th>Ping</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="/assets/js/api.js"></script>
+<script>
+  function esc(s) {
+    if (s == null || s === undefined) return '';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  function toggleInputMode() {
+    const isCidr = document.getElementById('inputModeCidr').checked;
+    document.getElementById('rangeInputs').classList.toggle('hidden', isCidr);
+    document.getElementById('cidrInputWrap').classList.toggle('hidden', !isCidr);
+    document.getElementById('formAlert').classList.add('hidden');
+  }
+
+  document.getElementById('inputModeRange').addEventListener('change', toggleInputMode);
+  document.getElementById('inputModeCidr').addEventListener('change', toggleInputMode);
+
+  let discoveryResults = [];
+
+  document.getElementById('scanBtn').addEventListener('click', async () => {
+    const formAlert = document.getElementById('formAlert');
+    formAlert.classList.add('hidden');
+
+    const isCidr = document.getElementById('inputModeCidr').checked;
+    let payload = {};
+
+    if (isCidr) {
+      const cidr = document.getElementById('cidrInput').value.trim();
+      if (!cidr) {
+        formAlert.textContent = 'Enter CIDR notation (e.g. 192.168.1.0/24)';
+        formAlert.classList.remove('hidden');
+        return;
+      }
+      payload = { cidr };
+    } else {
+      const start = document.getElementById('startIp').value.trim();
+      const end = document.getElementById('endIp').value.trim();
+      if (!start || !end) {
+        formAlert.textContent = 'Enter both Start IP and End IP';
+        formAlert.classList.remove('hidden');
+        return;
+      }
+      payload = { start_ip: start, end_ip: end };
+    }
+
+    const btn = document.getElementById('scanBtn');
+    btn.disabled = true;
+    document.getElementById('scanBtnText').classList.add('hidden');
+    document.getElementById('scanBtnSpin').classList.remove('hidden');
+
+    const res = await Api.post('/api/scan/discovery', payload);
+    const data = res ? await res.json() : null;
+
+    btn.disabled = false;
+    document.getElementById('scanBtnText').classList.remove('hidden');
+    document.getElementById('scanBtnSpin').classList.add('hidden');
+
+    if (!res || !res.ok) {
+      formAlert.textContent = data?.error || 'Discovery failed';
+      formAlert.classList.remove('hidden');
+      Api.toast(data?.error || 'Discovery failed', 'error');
+      return;
+    }
+
+    discoveryResults = data.results || (Array.isArray(data) ? data : []);
+    renderResults(discoveryResults);
+    document.getElementById('resultsPlaceholder').classList.add('hidden');
+    document.getElementById('resultsWrap').classList.remove('hidden');
+    const aliveCount = discoveryResults.filter(r => r.status === 'alive').length;
+    Api.toast(`Found ${aliveCount} live host(s). Saved to Results.`, 'success');
+  });
+
+  function goToPortScan(ips) {
+    if (!ips || !ips.length) return;
+    const importParam = ips.join(',');
+    const url = '/scan/port?import=' + encodeURIComponent(importParam);
+    window.location.href = url;
+  }
+
+  function renderResults(results) {
+    const tbody = document.getElementById('resultsBody');
+    const portScanUrl = '{{ url_for("pages.scan_port") }}';
+    tbody.innerHTML = results.map(r => `
+      <tr data-ip="${esc(r.ip)}">
+        <td>
+          <input type="checkbox" class="host-checkbox" data-ip="${esc(r.ip)}"
+            ${r.status === 'alive' ? '' : 'disabled'}
+            title="${r.status === 'alive' ? 'Select for port scan' : 'Only alive hosts can be selected'}">
+        </td>
+        <td class="text-cyan mono">${esc(r.ip)}</td>
+        <td class="mono">${esc(r.hostname || '—')}</td>
+        <td class="mono">${esc(r.latency || '—')}</td>
+        <td>
+          <span class="badge ${r.status === 'alive' ? 'badge-completed' : 'badge-failed'}">
+            ${r.status === 'alive' ? 'Alive' : 'Dead'}
+          </span>
+        </td>
+        <td>
+          ${r.status === 'alive'
+            ? `<a href="${portScanUrl}?import=${encodeURIComponent(r.ip)}" class="btn btn-primary btn-sm">Port Scan</a>`
+            : '—'}
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('selectAll').indeterminate = false;
+    updateScanSelectedBtn();
+  }
+
+  document.getElementById('resultsWrap').addEventListener('change', (e) => {
+    if (e.target.classList.contains('host-checkbox') || e.target.id === 'selectAll') {
+      updateSelectAllState();
+      updateScanSelectedBtn();
+    }
+  });
+
+  document.getElementById('selectAll').addEventListener('change', function() {
+    const checked = this.checked;
+    document.querySelectorAll('.host-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
+    updateScanSelectedBtn();
+  });
+
+  function updateSelectAllState() {
+    const checkboxes = document.querySelectorAll('.host-checkbox:not(:disabled)');
+    const checked = document.querySelectorAll('.host-checkbox:not(:disabled):checked');
+    const sel = document.getElementById('selectAll');
+    sel.checked = checkboxes.length && checked.length === checkboxes.length;
+    sel.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+  }
+
+  function updateScanSelectedBtn() {
+    const checked = document.querySelectorAll('.host-checkbox:checked');
+    document.getElementById('scanSelectedBtn').disabled = checked.length === 0;
+  }
+
+  document.getElementById('scanSelectedBtn').addEventListener('click', () => {
+    const checked = document.querySelectorAll('.host-checkbox:checked');
+    const ips = Array.from(checked).map(cb => cb.dataset.ip).filter(Boolean);
+    if (!ips.length) return;
+    goToPortScan(ips);
+  });
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me || !me.authenticated) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+      e.preventDefault();
+      Api.logout();
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

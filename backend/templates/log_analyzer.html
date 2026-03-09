@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Analyzer — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link active" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Log Analyzer</div>
+        <div class="page-subtitle">UPLOAD LOG FILES AND VIEW SUMMARY STATISTICS</div>
+      </div>
+    </div>
+
+    <div id="formAlert" class="alert alert-error hidden mb-2"></div>
+
+    <div class="panel">
+      <div class="panel-title">UPLOAD LOG FILE</div>
+      <p class="form-hint">
+        Supported formats: <span class="mono">.log</span>, <span class="mono">.txt</span>, <span class="mono">.json</span> — max 10MB.
+      </p>
+      <div class="form-group">
+        <label class="form-label" for="logFile">Choose File</label>
+        <input class="form-control" type="file" id="logFile" accept=".log,.txt,.json">
+      </div>
+      <button class="btn btn-primary mt-2" id="analyzeBtn">
+        <span id="analyzeBtnText">Analyze Log</span>
+        <span id="analyzeBtnSpin" class="hidden">Analyzing…</span>
+      </button>
+    </div>
+
+    <div class="panel mt-3 hidden" id="summaryPanel">
+      <div class="panel-title">LOG SUMMARY</div>
+      <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat-card cyan" style="padding:1rem">
+          <div class="stat-label">Total Events</div>
+          <div class="stat-value cyan" id="statTotalEvents">—</div>
+        </div>
+        <div class="stat-card red" style="padding:1rem">
+          <div class="stat-label">Errors</div>
+          <div class="stat-value red" id="statErrors">—</div>
+        </div>
+        <div class="stat-card yellow" style="padding:1rem">
+          <div class="stat-label">Warnings</div>
+          <div class="stat-value" id="statWarnings">—</div>
+        </div>
+        <div class="stat-card purple" style="padding:1rem">
+          <div class="stat-label">Failed Logins</div>
+          <div class="stat-value" id="statFailedLogins">—</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="/assets/js/api.js"></script>
+<script>
+  function showError(message) {
+    const alertBox = document.getElementById('formAlert');
+    alertBox.textContent = message;
+    alertBox.classList.remove('hidden');
+  }
+
+  function clearError() {
+    const alertBox = document.getElementById('formAlert');
+    alertBox.classList.add('hidden');
+    alertBox.textContent = '';
+  }
+
+  async function analyzeLogFile() {
+    clearError();
+    const fileInput = document.getElementById('logFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+      showError('Select a log file to analyze.');
+      return;
+    }
+
+    const allowed = ['.log', '.txt', '.json'];
+    const lowerName = file.name.toLowerCase();
+    const hasAllowedExt = allowed.some(ext => lowerName.endsWith(ext));
+    if (!hasAllowedExt) {
+      showError('Unsupported file type. Allowed: .log, .txt, .json');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showError('File too large. Max size is 10MB.');
+      return;
+    }
+
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    document.getElementById('analyzeBtnText').classList.add('hidden');
+    document.getElementById('analyzeBtnSpin').classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const csrf = Api.getCsrf();
+      const res = await fetch('/api/logs/analyze', {
+        method: 'POST',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+        body: formData,
+        credentials: 'include'
+      });
+
+      const data = await res.json().catch(() => null);
+
+      btn.disabled = false;
+      document.getElementById('analyzeBtnText').classList.remove('hidden');
+      document.getElementById('analyzeBtnSpin').classList.add('hidden');
+
+      if (res.status === 401) {
+        window.location.replace('/login');
+        return;
+      }
+
+      if (!res.ok || !data) {
+        const msg = data && data.error ? data.error : 'Log analysis failed.';
+        showError(msg);
+        Api.toast(msg, 'error');
+        return;
+      }
+
+      document.getElementById('summaryPanel').classList.remove('hidden');
+      document.getElementById('statTotalEvents').textContent = data.total_events ?? 0;
+      document.getElementById('statErrors').textContent = data.errors ?? 0;
+      document.getElementById('statWarnings').textContent = data.warnings ?? 0;
+      document.getElementById('statFailedLogins').textContent = data.failed_logins ?? 0;
+
+      Api.toast('Log analyzed successfully.', 'success');
+    } catch (e) {
+      btn.disabled = false;
+      document.getElementById('analyzeBtnText').classList.remove('hidden');
+      document.getElementById('analyzeBtnSpin').classList.add('hidden');
+      showError('Unexpected error during analysis.');
+      Api.toast('Unexpected error during analysis.', 'error');
+    }
+  }
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me || !me.authenticated) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+      e.preventDefault();
+      Api.logout();
+    });
+
+    document.getElementById('analyzeBtn').addEventListener('click', analyzeLogFile);
+  }
+
+  init();
+</script>
+</body>
+</html>
+

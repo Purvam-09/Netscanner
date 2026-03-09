@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- ── Sidebar ─────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">⬡</span>
+        <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">MAIN</div>
+        <a class="nav-link active" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+        <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+        <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+        <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+        <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+        <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+        <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+        <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+        <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+        <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar" id="sidebarAvatar">U</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebarUsername">…</div>
+            <div class="user-role" id="sidebarRole">user</div>
+          </div>
+        </div>
+        <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+      </div>
+    </aside>
+
+    <!-- ── Main ───────────────────────────────────────── -->
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle" id="dashboardTs">LOADING SYSTEM STATUS…</div>
+        </div>
+        <a href="{{ url_for('pages.scan') }}" class="btn btn-primary">⊕ &nbsp;Port Scan</a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-label">Total Scans</div>
+          <div class="stat-value green" id="statTotal">—</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">Active</div>
+          <div class="stat-value" id="statActive">—</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-label">Users</div>
+          <div class="stat-value cyan" id="statUsers">—</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-label">Scheduled</div>
+          <div class="stat-value" id="statScheduled">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;margin-bottom:2rem">
+        <div class="panel" style="height:280px">
+          <div class="panel-title">SCAN ACTIVITY — LAST 7 DAYS</div>
+          <div style="height:220px"><canvas id="activityChart"></canvas></div>
+        </div>
+        <div class="panel" style="height:280px">
+          <div class="panel-title">SCAN STATUS BREAKDOWN</div>
+          <div style="height:220px"><canvas id="statusChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Recent scans table -->
+      <div class="panel">
+        <div class="panel-title">RECENT SCANS</div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Target</th><th>Type</th><th>Ports</th>
+                <th>Status</th><th>Duration</th><th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="recentScansBody">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+  </div><!-- /.app-wrapper -->
+
+  <!-- Toast stack -->
+  <div class="toast-stack" id="toastStack"></div>
+
+  <!-- ── Scan Detail Modal ──────────────────────────────────────── -->
+  <div class="modal-backdrop hidden" id="detailModal">
+    <div class="modal-box" style="max-width:800px">
+      <div class="modal-header">
+        <div class="modal-title">SCAN DETAIL — #<span id="mdScanId"></span></div>
+        <button class="modal-close" id="detailClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="mdLoading" style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.8rem">Loading…</div>
+        <div id="mdContent" class="hidden">
+          <div id="mdPortScanMeta" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+            <div><div class="stat-label">Target</div><div class="mono text-cyan" id="mdTarget">—</div></div>
+            <div><div class="stat-label">Status</div><div id="mdStatus">—</div></div>
+            <div><div class="stat-label">Duration</div><div class="mono" id="mdDuration">—</div></div>
+            <div><div class="stat-label">Scan Type</div><div class="mono" id="mdType">—</div></div>
+            <div><div class="stat-label">Ports Range</div><div class="mono" id="mdPorts">—</div></div>
+            <div><div class="stat-label">Open Ports</div><div class="mono text-green" id="mdOpenCount">—</div></div>
+          </div>
+          <div id="mdPingMeta" class="hidden" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+            <div><div class="stat-label">Target</div><div class="mono text-cyan" id="mdPingTarget">—</div></div>
+            <div><div class="stat-label">Status</div><div id="mdPingStatus">—</div></div>
+            <div><div class="stat-label">Duration</div><div class="mono" id="mdPingDuration">—</div></div>
+            <div><div class="stat-label">Hosts Up</div><div class="mono text-green" id="mdHostsUp">—</div></div>
+            <div><div class="stat-label">Hosts Down</div><div class="mono" id="mdHostsDown">—</div></div>
+            <div><div class="stat-label">Total Scanned</div><div class="mono" id="mdTotalScanned">—</div></div>
+          </div>
+
+          <div id="mdError" class="alert alert-error hidden mb-2"></div>
+
+          <div style="display:flex;gap:0.75rem;margin-bottom:1rem">
+            <a id="mdExportCsv" href="#" class="btn btn-secondary btn-sm">⬇ CSV</a>
+            <a id="mdExportPdf" href="#" class="btn btn-secondary btn-sm">⬇ PDF</a>
+            <button id="mdCveBtn" class="btn btn-secondary btn-sm">🔍 CVE Lookup</button>
+          </div>
+
+          <div id="mdPortScanSection">
+          <div class="panel-title">OPEN PORTS</div>
+          <div id="mdPortsWrap">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>State</th><th>Banner</th></tr></thead>
+                <tbody id="mdPortsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="mdNoPorts" class="hidden" style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.8rem;padding:0.75rem 0">No open ports found.</div>
+          </div>
+          <div id="mdPingSection" class="hidden">
+            <div class="panel-title">PING SWEEP — LIVE HOSTS</div>
+            <div id="mdHostsList" style="font-family:var(--font-mono);font-size:0.85rem;max-height:200px;overflow-y:auto;padding:0.75rem 0"></div>
+          </div>
+
+          <div id="mdCveSection" class="hidden mt-2">
+          <div id="mdCveSection" class="hidden mt-2">
+            <div class="panel-title mt-2">CVE VULNERABILITIES</div>
+            <div id="mdCveContent" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-secondary)">
+              Loading CVEs…
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/charts.js"></script>
+  <script>
+    function badge(status) {
+      const map = {
+        completed:'badge-completed', running:'badge-running',
+        pending:'badge-pending', failed:'badge-failed'
+      };
+      return `<span class="badge ${map[status]||'badge-pending'}">${status}</span>`;
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    async function load() {
+      const me = await Api.initPage();
+      if (!me || !me.authenticated) return;
+
+      document.getElementById('logoutBtn').addEventListener('click', e => {
+        e.preventDefault(); Api.logout();
+      });
+
+      document.getElementById('dashboardTs').textContent =
+        `SYSTEM TIME ${new Date().toLocaleString()} // USER: ${me.username.toUpperCase()}`;
+
+      Charts.initActivity('activityChart');
+      Charts.initStatus('statusChart');
+
+      const isAdmin = me.role === 'admin';
+
+      if (isAdmin) {
+        const stats = await Api.getJSON('/api/admin/stats');
+        if (stats) {
+          document.getElementById('statTotal').textContent     = stats.total_scans ?? '—';
+          document.getElementById('statActive').textContent    = stats.active_scans ?? '—';
+          document.getElementById('statUsers').textContent     = stats.total_users ?? '—';
+          Charts.setActivityData(stats.daily_counts || []);
+          Charts.setStatusData(stats.status_breakdown || {});
+        }
+      } else {
+        const [scanData, profileStats] = await Promise.all([
+          Api.getJSON('/api/scans/'),
+          Api.getJSON('/api/profile/stats'),
+        ]);
+        const scans = (scanData?.scans || []);
+        if (scanData) {
+          document.getElementById('statTotal').textContent  = scans.length;
+          document.getElementById('statActive').textContent =
+            scans.filter(s=>s.status==='running'||s.status==='pending').length;
+        }
+        if (profileStats) {
+          document.getElementById('statScheduled').textContent = profileStats.scheduled_scans ?? 0;
+        }
+        document.getElementById('statUsers').textContent = '—';
+
+        // Populate charts from user's scans (admin gets this from /api/admin/stats)
+        const counts = Array(7).fill(0);
+        const now = new Date();
+        scans.forEach(s => {
+          const d = s.created_at ? new Date(s.created_at) : null;
+          if (!d || isNaN(d.getTime())) return;
+          for (let i = 0; i < 7; i++) {
+            const ref = new Date(now);
+            ref.setDate(ref.getDate() - (6 - i));
+            if (d.toDateString() === ref.toDateString()) { counts[i]++; break; }
+          }
+        });
+        Charts.setActivityData(counts);
+        Charts.setStatusData({
+          completed: scans.filter(s=>s.status==='completed').length,
+          running:   scans.filter(s=>s.status==='running').length,
+          pending:   scans.filter(s=>s.status==='pending').length,
+          failed:    scans.filter(s=>s.status==='failed').length,
+        });
+      }
+
+      // Recent scans
+      const scansData = await Api.getJSON('/api/scans/');
+      const tbody = document.getElementById('recentScansBody');
+      const scans = (scansData?.scans || []).slice(0, 10);
+      if (!scans.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted)">
+          No scans yet. <a href="{{ url_for('pages.discovery') }}">Discover hosts</a> or <a href="{{ url_for('pages.scan') }}">start a port scan</a></td></tr>`;
+      } else {
+        tbody.innerHTML = scans.map(s => `
+          <tr>
+            <td>${s.id}</td>
+            <td class="text-cyan">${esc(s.target)}</td>
+            <td>${esc(s.scan_type)}</td>
+            <td>${esc(s.ports)}</td>
+            <td>${badge(s.status)}</td>
+            <td>${s.duration_seconds != null ? s.duration_seconds+'s' : '—'}</td>
+            <td>${(s.date||'').slice(0,10)}</td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-primary btn-sm view-btn" data-id="${s.id}">View</button>
+            </td>
+          </tr>`).join('');
+        
+        // Add click handlers for view buttons
+        tbody.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const scanId = parseInt(btn.dataset.id);
+            const scan = scans.find(s => s.id === scanId);
+            if (scan) openDetail(scanId, scan.target);
+          });
+        });
+      }
+    }
+
+    // ── Detail modal functions ────────────────────────────────────────
+
+    async function openDetail(id, target) {
+      const modal = document.getElementById('detailModal');
+      document.getElementById('mdScanId').textContent = id;
+      document.getElementById('mdLoading').classList.remove('hidden');
+      document.getElementById('mdContent').classList.add('hidden');
+      modal.classList.remove('hidden');
+
+      const data = await Api.getJSON(`/api/scans/${id}`);
+      document.getElementById('mdLoading').classList.add('hidden');
+      if (!data) return;
+      document.getElementById('mdContent').classList.remove('hidden');
+
+      const results = data.results || {};
+      const errEl = document.getElementById('mdError');
+      if (data.error_message) { errEl.textContent = data.error_message; errEl.classList.remove('hidden'); }
+      else errEl.classList.add('hidden');
+
+      document.getElementById('mdExportCsv').href = `/api/export/scans/${id}/csv`;
+      document.getElementById('mdExportPdf').href = `/api/export/scans/${id}/pdf`;
+
+      if (data.scan_type === 'ping') {
+        document.getElementById('mdPortScanMeta').classList.add('hidden');
+        document.getElementById('mdPortScanSection').classList.add('hidden');
+        document.getElementById('mdCveBtn').style.display = 'none';
+        document.getElementById('mdPingMeta').classList.remove('hidden');
+        document.getElementById('mdPingMeta').style.display = 'grid';
+        document.getElementById('mdPingSection').classList.remove('hidden');
+        document.getElementById('mdPingTarget').textContent = data.target;
+        document.getElementById('mdPingStatus').innerHTML = badge(data.status);
+        document.getElementById('mdPingDuration').textContent = data.duration_seconds!=null ? data.duration_seconds+'s' : '—';
+        const hostsUp = results.hosts_up || results.hosts_scanned || [];
+        const totalScanned = results.total_hosts_scanned || 0;
+        document.getElementById('mdHostsUp').textContent = hostsUp.length;
+        document.getElementById('mdHostsDown').textContent = results.hosts_down_count ?? (totalScanned - hostsUp.length);
+        document.getElementById('mdTotalScanned').textContent = totalScanned;
+        const listEl = document.getElementById('mdHostsList');
+        listEl.innerHTML = hostsUp.length ? hostsUp.map(h => `<div class="text-green" style="padding:0.2rem 0">${esc(h)}</div>`).join('') : '<span style="color:var(--text-muted)">No live hosts found.</span>';
+      } else {
+        document.getElementById('mdPingMeta').classList.add('hidden');
+        document.getElementById('mdPingSection').classList.add('hidden');
+        document.getElementById('mdCveBtn').style.display = '';
+        document.getElementById('mdPortScanMeta').classList.remove('hidden');
+        document.getElementById('mdPortScanSection').classList.remove('hidden');
+        document.getElementById('mdTarget').textContent = data.target;
+        document.getElementById('mdStatus').innerHTML = badge(data.status);
+        document.getElementById('mdDuration').textContent = data.duration_seconds!=null ? data.duration_seconds+'s' : '—';
+        document.getElementById('mdType').textContent = data.scan_type;
+        document.getElementById('mdPorts').textContent = data.ports || '—';
+        const ports = results.open_ports || [];
+        document.getElementById('mdOpenCount').textContent = ports.length;
+        const tbody = document.getElementById('mdPortsBody');
+        if (!ports.length) {
+          document.getElementById('mdPortsWrap').classList.add('hidden');
+          document.getElementById('mdNoPorts').classList.remove('hidden');
+        } else {
+          document.getElementById('mdPortsWrap').classList.remove('hidden');
+          document.getElementById('mdNoPorts').classList.add('hidden');
+          tbody.innerHTML = ports.map(p => `<tr><td class="text-green mono">${p.port}</td><td class="mono">${esc(p.protocol||'tcp')}</td><td class="mono">${esc(p.service||'')}</td><td>${p.state==='open'?'<span class="text-green">open</span>':'<span class="text-yellow">'+esc(p.state)+'</span>'}</td><td class="mono" style="color:var(--text-muted);font-size:0.72rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(p.banner||'—')}</td></tr>`).join('');
+        }
+        const cveBtn = document.getElementById('mdCveBtn');
+        cveBtn.onclick = () => loadCVEs(id);
+        cveBtn.disabled = data.status !== 'completed';
+      }
+      document.getElementById('mdCveSection').classList.add('hidden');
+    }
+
+    async function loadCVEs(scanId) {
+      document.getElementById('mdCveSection').classList.remove('hidden');
+      document.getElementById('mdCveContent').innerHTML =
+        `<span style="color:var(--text-muted)">Querying NVD database…</span>`;
+
+      const data = await Api.getJSON(`/api/scans/${scanId}/cves`);
+      if (!data) {
+        document.getElementById('mdCveContent').innerHTML =
+          `<span class="text-red">Failed to load CVE data.</span>`;
+        return;
+      }
+      const cves = data.cves || {};
+      const services = Object.keys(cves);
+      if (!services.length) {
+        document.getElementById('mdCveContent').innerHTML =
+          `<span style="color:var(--text-muted)">No CVE data found for these services.</span>`;
+        return;
+      }
+
+      let html = '';
+      services.forEach(svc => {
+        const list = cves[svc] || [];
+        html += `<div style="margin-bottom:1rem">
+          <div style="color:var(--accent-cyan);margin-bottom:0.4rem;font-size:0.72rem;letter-spacing:1px">
+            SERVICE: ${esc(svc.toUpperCase())} — ${list.length} CVE(s)
+          </div>`;
+        list.forEach(c => {
+          const sevClass = `sev-${(c.severity||'unknown').toLowerCase()}`;
+          html += `<div style="border:1px solid var(--border);border-radius:4px;padding:0.6rem;margin-bottom:0.4rem;background:var(--bg-surface)">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.3rem">
+              <a href="${c.url}" target="_blank" style="color:var(--accent-cyan);font-size:0.78rem">${esc(c.id)}</a>
+              <span class="${sevClass}" style="font-size:0.65rem;letter-spacing:1px">${esc(c.severity)}</span>
+              ${c.cvss_score!=null?`<span style="color:var(--text-muted);font-size:0.65rem">CVSS:${c.cvss_score}</span>`:''}
+              <span style="color:var(--text-muted);font-size:0.65rem;margin-left:auto">${esc(c.published)}</span>
+            </div>
+            <div style="color:var(--text-secondary);font-size:0.73rem;line-height:1.4">${esc(c.description)}</div>
+          </div>`;
+        });
+        html += '</div>';
+      });
+      document.getElementById('mdCveContent').innerHTML = html;
+    }
+
+    // Modal close handlers
+    document.getElementById('detailClose').addEventListener('click', () =>
+      document.getElementById('detailModal').classList.add('hidden'));
+    
+    document.getElementById('detailModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+    });
+
+    load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Port Scan — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link active" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Port Scan</div>
+        <div class="page-subtitle">CONFIGURE & LAUNCH PORT SCAN — SINGLE IP, MULTIPLE IPs, OR CIDR</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
+
+      <!-- Scan form -->
+      <div class="panel">
+        <div class="panel-title">SCAN PARAMETERS</div>
+
+        <div id="formAlert" class="alert alert-error hidden"></div>
+
+        <form id="scanForm" novalidate>
+          <div class="form-group">
+            <label class="form-label">Target type</label>
+            <div class="radio-group" role="radiogroup" aria-label="Target type">
+              <label class="radio-option">
+                <input type="radio" name="targetType" value="public" id="targetTypePublic" checked>
+                <span class="radio-label">Public</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="targetType" value="private" id="targetTypePrivate">
+                <span class="radio-label">Private</span>
+              </label>
+            </div>
+            <div class="form-hint" id="targetTypeHint">Public: hostnames or public IPs (e.g. scanme.nmap.org, example.com)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Target</label>
+            <textarea class="form-control" id="target" rows="4"
+              placeholder="192.168.1.1&#10;192.168.1.5&#10;192.168.1.0/24&#10;or: scanme.nmap.org, example.com" required></textarea>
+            <div class="form-hint" id="targetHint">Single IP, multiple IPs (one per line or comma-separated), or CIDR (e.g. 192.168.1.0/24)</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Port Range</label>
+            <input class="form-control" type="text" id="portRange"
+              placeholder="1-1000  |  80,443,8080  |  1-65535">
+            <div class="form-hint" id="portRangeHint">Enter ports to scan (e.g. 80, 1-1000, 80,443,8080). Max 1000 ports.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Scan Type</label>
+            <select class="form-control" id="scanType">
+              <option value="">-- select type --</option>
+              <option value="tcp-connect">TCP Connect (recommended)</option>
+              <option value="tcp-syn">TCP SYN</option>
+              <option value="udp">UDP Probe</option>
+            </select>
+            <div class="form-hint">Use Host Discovery to find live hosts first; then port scan them here.</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Scan Mode</label>
+            <select class="form-control" id="scanMode">
+              <option value="normal">Normal (use port range above)</option>
+              <option value="stealth_connect">Stealth connect (T2, no banner)</option>
+              <option value="fast">Fast (top 100 ports)</option>
+              <option value="top_1000">Top 1000 ports</option>
+              <option value="full">Full (all 65535 ports)</option>
+            </select>
+            <div class="form-hint">Normal/Stealth use your port range; Fast/Top 1000/Full use predefined ports.</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem">
+            <div>
+              <label class="form-label">Timeout (sec)</label>
+              <input class="form-control" type="number" id="timeout" value="2" min="1" max="10">
+            </div>
+            <div>
+              <label class="form-label">Threads</label>
+              <input class="form-control" type="number" id="threads" value="50" min="1" max="100">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-full" id="submitBtn">
+            <span id="btnText">⊕ LAUNCH SCAN</span>
+            <span id="btnSpin" class="hidden">◌ LAUNCHING…</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Terminal output -->
+      <div class="panel">
+        <div class="panel-title">TERMINAL OUTPUT</div>
+
+        <div id="progressWrap" class="hidden mb-2">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span class="mono" style="font-size:0.7rem;color:var(--text-muted)">SCANNING…</span>
+            <span class="mono text-green" style="font-size:0.7rem" id="progressPct">0%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+        </div>
+
+        <div class="terminal" id="terminal">
+          <div class="t-dim">NetScanner v2.0 — Ready</div>
+          <div class="t-dim">Configure parameters and launch scan.</div>
+        </div>
+
+        <div id="scanMeta" class="hidden mt-2" style="font-size:0.75rem;font-family:var(--font-mono);color:var(--text-muted)">
+          Scan ID: <span class="text-cyan" id="metaScanId">—</span> &nbsp;|&nbsp;
+          Status: <span id="metaStatus">—</span> &nbsp;|&nbsp;
+          Duration: <span id="metaDuration">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Type & Scan Mode Reference -->
+    <div class="panel mt-3" id="scanReference">
+      <div class="panel-title">SCAN TYPE REFERENCE</div>
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Description</th><th>Root Required</th></tr></thead>
+        <tbody>
+          <tr><td class="text-green">TCP Connect</td><td>Full 3-way handshake. Most reliable, no root needed.</td><td>No</td></tr>
+          <tr><td class="text-cyan">TCP SYN</td><td>Half-open scan. Faster but falls back to TCP Connect.</td><td>No (fallback)</td></tr>
+          <tr><td class="text-yellow">UDP</td><td>UDP datagram probe. Results may be open|filtered.</td><td>No</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-title" style="margin-top:1.25rem">SCAN MODE REFERENCE</div>
+      <table class="data-table">
+        <thead><tr><th>Mode</th><th>Description</th><th>Nmap-style</th></tr></thead>
+        <tbody>
+          <tr><td class="text-green">Normal</td><td>Use the port range you enter above. Service/version detection on.</td><td><code>-sT</code></td></tr>
+          <tr><td class="text-cyan">Fast</td><td>Scans top 100 most common ports only. Quick recon.</td><td><code>--top-ports 100</code></td></tr>
+          <tr><td class="text-cyan">Top 1000</td><td>Scans ports 1–1000. Good balance of speed and coverage.</td><td><code>--top-ports 1000</code></td></tr>
+          <tr><td class="text-yellow">Full</td><td>All 65535 ports. Slow; use when you need full coverage.</td><td><code>-p-</code></td></tr>
+          <tr><td class="text-muted">Stealth connect</td><td>TCP connect with polite timing (T2), no banner read. Less noisy.</td><td><code>-sT -T2</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="/assets/js/api.js"></script>
+<script src="/assets/js/socket.js"></script>
+<script>
+  function term(html) {
+    const t = document.getElementById('terminal');
+    t.innerHTML += `\n${html}`;
+    t.scrollTop = t.scrollHeight;
+  }
+
+  function termClear() {
+    document.getElementById('terminal').innerHTML = '';
+  }
+
+  function setProgress(pct) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+  }
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me || !me.authenticated) return;
+
+    document.getElementById('logoutBtn').addEventListener('click', e => {
+      e.preventDefault(); Api.logout();
+    });
+
+    // Import targets from Host Discovery (URL param: ?import=ip1,ip2,ip3 on /scan or /scan/port)
+    const params = new URLSearchParams(window.location.search);
+    const importTargets = params.get('import');
+    if (importTargets) {
+      const ips = importTargets.split(',').map(s => s.trim()).filter(Boolean);
+      if (ips.length) {
+        document.getElementById('target').value = ips.join('\n');
+        document.getElementById('targetTypePrivate').checked = true;
+        updateTargetTypeUI();
+        Api.toast(`Imported ${ips.length} IP(s) from Host Discovery`, 'success');
+      }
+    }
+
+    WS.init();
+
+    let activeScanId = null;
+    let statusPollTimer = null;
+    let lastHandledScanId = null;
+
+    async function handleScanFinished(scanId, status, openPortCount, errorMessage) {
+      if (lastHandledScanId === scanId) return;
+      lastHandledScanId = scanId;
+      activeScanId = null;
+      if (statusPollTimer) {
+        clearInterval(statusPollTimer);
+        statusPollTimer = null;
+      }
+
+      setProgress(100);
+      document.getElementById('metaStatus').textContent = status;
+        const pctEl = document.getElementById('terminalProgressPct');
+        if (pctEl) pctEl.parentElement.style.display = 'none';
+
+      if (status === 'completed') {
+        const data = await Api.getJSON(`/api/scans/${scanId}`);
+        const durEl = document.getElementById('metaDuration');
+        if (durEl && data && data.duration_seconds != null) durEl.textContent = data.duration_seconds + 's';
+
+        const r = data?.results || {};
+        const scanType = r.scan_type || data?.scan_type || '—';
+        if (scanType === 'ping') {
+          const hostsUp = r.hosts_up || [];
+          const totalScanned = r.total_hosts_scanned || 0;
+          term(`<span class="t-cyan">[DONE]</span> Ping sweep completed. ${hostsUp.length} hosts up / ${totalScanned} scanned.`);
+          term(`<span class="t-dim">Loading report…</span>`);
+          term(`<span class="t-dim">─────────────────────────────────</span>`);
+          term(`<span class="t-cyan">PING SWEEP REPORT</span>`);
+          term(`<span class="t-dim">Target: ${escapeHtml(r.target || data.target || '—')} | Duration: ${data?.duration_seconds != null ? data.duration_seconds + 's' : '—'}</span>`);
+          term(`<span class="t-dim">Hosts up: ${hostsUp.length} | Hosts down: ${r.hosts_down_count ?? (totalScanned - hostsUp.length)}</span>`);
+          term(`<span class="t-dim">─────────────────────────────────</span>`);
+          if (hostsUp.length) {
+            hostsUp.forEach(h => term(`<span class="t-green">${escapeHtml(h)}</span>`));
+          } else {
+            term(`<span class="t-muted">No live hosts found.</span>`);
+          }
+          term(`<span class="t-dim">─────────────────────────────────</span>`);
+        } else {
+          const openPortCount = (r.open_ports || []).length;
+          term(`<span class="t-cyan">[DONE]</span> Scan completed. ${openPortCount || 0} open ports found.`);
+          term(`<span class="t-dim">Loading report…</span>`);
+          if (data && data.results) {
+            const target = r.target || data.target || '—';
+            const scanMode = (r.scan_mode || data.scan_mode || 'normal');
+            const duration = data.duration_seconds != null ? data.duration_seconds + 's' : '—';
+            const hosts = (r.hosts_scanned || []).length;
+            const totalPorts = r.total_ports_checked || 0;
+            const openPorts = r.open_ports || [];
+
+            term(`<span class="t-dim">─────────────────────────────────</span>`);
+            term(`<span class="t-cyan">SCAN REPORT</span>`);
+            term(`<span class="t-dim">Target: ${escapeHtml(target)} | Type: ${escapeHtml(scanType)} | Mode: ${escapeHtml(scanMode)}</span>`);
+            term(`<span class="t-dim">Duration: ${duration} | Hosts: ${hosts} | Ports checked: ${totalPorts} | Open: ${openPorts.length}</span>`);
+            term(`<span class="t-dim">─────────────────────────────────</span>`);
+
+            if (openPorts.length) {
+              term(`<span class="t-green">PORT     STATE    SERVICE       VERSION</span>`);
+              openPorts.forEach(p => {
+                const port = p.port != null ? p.port : '—';
+                const state = (p.state || 'open');
+                const service = (p.service || 'unknown').padEnd(12);
+                const version = String(p.version || p.banner || '—').substring(0, 40);
+                term(`<span class="t-cyan">${port}/tcp</span>   <span class="t-green">${escapeHtml(state)}</span>   ${escapeHtml(service)}   ${escapeHtml(version)}`);
+              });
+            } else {
+              term(`<span class="t-muted">No open ports found.</span>`);
+            }
+            term(`<span class="t-dim">─────────────────────────────────</span>`);
+          }
+        }
+        document.getElementById('progressWrap').classList.add('hidden');
+
+        term(`<span class="t-dim">View full results (export, CVE) → <a href="{{ url_for('pages.results') }}?open=${scanId}" style="color:var(--accent-green)">Results page (Scan #${scanId})</a></span>`);
+        Api.toast('Scan completed!', 'success');
+      } else {
+        term(`<span class="t-red">[ERROR]</span> ${escapeHtml(errorMessage || 'Scan failed.')}`);
+        Api.toast('Scan failed', 'error');
+      }
+      document.getElementById('progressWrap').classList.add('hidden');
+    }
+
+    WS.onScanUpdate(async (payload) => {
+      if (activeScanId && payload.scan_id !== activeScanId) return;
+
+      const pct = payload.progress || 0;
+      setProgress(pct);
+      document.getElementById('metaStatus').textContent = payload.status;
+
+      if (payload.status === 'running') {
+        if (!document.getElementById('terminalProgressPct')) {
+          term(`<span class="t-cyan">[SCANNING]</span> Progress: <span id="terminalProgressPct">0</span>%`);
+        }
+        const el = document.getElementById('terminalProgressPct');
+        if (el) el.textContent = pct;
+      } else if (payload.status === 'completed') {
+        await handleScanFinished(payload.scan_id, 'completed', payload.open_port_count, null);
+      } else if (payload.status === 'failed') {
+        await handleScanFinished(payload.scan_id, 'failed', 0, payload.error || 'Scan failed.');
+      }
+    });
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const d = document.createElement('div');
+      d.textContent = String(s);
+      return d.innerHTML;
+    }
+
+    // Target type: update placeholder and hint when Public/Private changes
+    function updateTargetTypeUI() {
+      const isPublic = document.getElementById('targetTypePublic').checked;
+      const targetInput = document.getElementById('target');
+      const targetHint = document.getElementById('targetHint');
+      const typeHint = document.getElementById('targetTypeHint');
+      if (isPublic) {
+        targetInput.placeholder = 'scanme.nmap.org  |  example.com  |  8.8.8.8';
+        targetHint.textContent = 'Hostname or public IP address';
+        typeHint.textContent = 'Public: hostnames or public IPs (e.g. scanme.nmap.org, example.com)';
+      } else {
+        targetInput.placeholder = '192.168.1.1  |  10.0.0.0/24  |  192.168.0.1-10';
+        targetHint.textContent = 'Private IP, range, or CIDR (e.g. 192.168.1.0/24)';
+        typeHint.textContent = 'Private: local/LAN IPs or CIDR (e.g. 192.168.1.0/24)';
+      }
+    }
+    // Validate target matches target type
+    function validateTargetTypeMatch(target, targetType) {
+      if (!targetType || !target) return { valid: true, error: '' };
+      
+      const ipPattern = /^[\d.]+$/;
+      const cidrPattern = /^[\d.]+\/\d+$/;
+      const hostnamePattern = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+      
+      // Check if it's a private IP
+      function isPrivateIP(ip) {
+        const parts = ip.split('.');
+        if (parts.length !== 4) return false;
+        const first = parseInt(parts[0]);
+        const second = parseInt(parts[1]);
+        return first === 10 ||
+               (first === 172 && second >= 16 && second <= 31) ||
+               (first === 192 && second === 168) ||
+               (first === 127);
+      }
+      
+      // Handle localhost
+      if (target.toLowerCase() === 'localhost') {
+        if (targetType === 'public') {
+          return { valid: false, error: 'Public target type cannot use localhost. Use public IPs or hostnames.' };
+        }
+        return { valid: true, error: '' };
+      }
+      
+      // Check if CIDR is private
+      function isPrivateCIDR(cidr) {
+        const [ip] = cidr.split('/');
+        return isPrivateIP(ip);
+      }
+      
+      if (targetType === 'private') {
+        // Check IP/CIDR first; only treat as hostname if it's not an IP or CIDR
+        if (ipPattern.test(target)) {
+          if (!isPrivateIP(target)) {
+            return { valid: false, error: 'Private target type requires a private IP (e.g. 192.168.1.1, 10.0.0.1, localhost)' };
+          }
+          return { valid: true, error: '' };
+        }
+        if (cidrPattern.test(target)) {
+          if (!isPrivateCIDR(target)) {
+            return { valid: false, error: 'Private target type requires a private IP range (e.g. 192.168.1.0/24, 10.0.0.0/8)' };
+          }
+          return { valid: true, error: '' };
+        }
+        if (hostnamePattern.test(target)) {
+          return { valid: false, error: 'Private target type requires an IP address or CIDR range, not a hostname.' };
+        }
+      } else if (targetType === 'public') {
+        if (ipPattern.test(target) && isPrivateIP(target)) {
+          return { valid: false, error: 'Public target type cannot use private IPs. Use public IPs or hostnames.' };
+        }
+        if (cidrPattern.test(target) && isPrivateCIDR(target)) {
+          return { valid: false, error: 'Public target type cannot use private IP ranges. Use public IPs or hostnames.' };
+        }
+      }
+      
+      return { valid: true, error: '' };
+    }
+
+    document.getElementById('targetTypePublic').addEventListener('change', function() {
+      updateTargetTypeUI();
+      document.getElementById('formAlert').classList.add('hidden');
+    });
+    document.getElementById('targetTypePrivate').addEventListener('change', function() {
+      updateTargetTypeUI();
+      document.getElementById('formAlert').classList.add('hidden');
+    });
+    document.getElementById('target').addEventListener('input', function() {
+      document.getElementById('formAlert').classList.add('hidden');
+    });
+
+    // Scan mode: enable/disable port range input and update helper text
+    function updatePortRangeUI() {
+      const scanMode = document.getElementById('scanMode').value;
+      const portInput = document.getElementById('portRange');
+      const modeSelect = document.getElementById('scanMode');
+      const hintEl = document.getElementById('portRangeHint');
+      modeSelect.disabled = false;
+      const modesUsingUserPorts = ['normal', 'stealth_connect'];
+      const disabled = !modesUsingUserPorts.includes(scanMode);
+      portInput.disabled = disabled;
+      const hints = {
+        normal: 'Enter ports to scan (e.g. 80, 1-1000, 80,443,8080). Max 1000 ports.',
+        stealth_connect: 'Enter ports to scan. Uses your port range with polite (T2) timing, no banner.',
+        fast: 'Fast scan uses the top 100 common ports. Port range is ignored.',
+        top_1000: 'Top 1000 scan uses predefined ports 1–1000. Port range is ignored.',
+        full: 'Full scan scans all TCP ports (1–65535). Port range is ignored.',
+      };
+      hintEl.textContent = hints[scanMode] || hints.normal;
+    }
+    document.getElementById('scanMode').addEventListener('change', updatePortRangeUI);
+    document.getElementById('scanType').addEventListener('change', updatePortRangeUI);
+    updatePortRangeUI(); // init
+
+    document.getElementById('scanForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      document.getElementById('formAlert').classList.add('hidden');
+
+      const targetType = document.querySelector('input[name="targetType"]:checked').value;
+      const target     = document.getElementById('target').value.trim();
+      const portRange  = document.getElementById('portRange').value.trim();
+      const scanType   = document.getElementById('scanType').value;
+
+      if (!target) {
+        document.getElementById('formAlert').textContent = 'Target is required.';
+        document.getElementById('formAlert').classList.remove('hidden');
+        return;
+      }
+      if (!scanType) {
+        document.getElementById('formAlert').textContent = 'Select a scan type.';
+        document.getElementById('formAlert').classList.remove('hidden');
+        return;
+      }
+      
+      // Validate target type match
+      const typeValidation = validateTargetTypeMatch(target, targetType);
+      if (!typeValidation.valid) {
+        document.getElementById('formAlert').textContent = typeValidation.error;
+        document.getElementById('formAlert').classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      document.getElementById('btnText').classList.add('hidden');
+      document.getElementById('btnSpin').classList.remove('hidden');
+
+      termClear();
+      term(`<span class="t-dim">Initialising scan…</span>`);
+      term(`<span class="t-cyan">TARGET TYPE</span> ${targetType}`);
+      term(`<span class="t-cyan">TARGET</span>     ${target}`);
+      term(`<span class="t-cyan">PORTS</span>      ${portRange || '1-1000'}`);
+      term(`<span class="t-cyan">TYPE</span>       ${scanType}`);
+      const scanMode = document.getElementById('scanMode').value || 'normal';
+      term(`<span class="t-cyan">MODE</span>      ${scanMode}`);
+      term(`<span class="t-dim">─────────────────────────────────</span>`);
+
+      const res = await Api.post('/api/scans/', {
+        target, port_range: portRange || '1-1000', scan_type: scanType, scan_mode: scanMode, target_type: targetType,
+      });
+
+      btn.disabled = false;
+      document.getElementById('btnText').classList.remove('hidden');
+      document.getElementById('btnSpin').classList.add('hidden');
+
+      if (!res) return;
+      const data = await res.json();
+
+      if (res.ok) {
+        activeScanId = data.id;
+        lastHandledScanId = null;
+        document.getElementById('scanMeta').classList.remove('hidden');
+        document.getElementById('metaScanId').textContent = data.id;
+        document.getElementById('metaStatus').textContent = 'pending';
+        document.getElementById('progressWrap').classList.remove('hidden');
+        setProgress(0);
+        term(`<span class="t-cyan">[QUEUED]</span> Scan #${data.id} enqueued. Waiting for worker…`);
+        Api.toast('Scan launched!', 'success');
+
+        if (statusPollTimer) clearInterval(statusPollTimer);
+        statusPollTimer = setInterval(async () => {
+          if (!activeScanId) return;
+          const scanData = await Api.getJSON(`/api/scans/${activeScanId}`);
+          if (!scanData) return;
+          const st = scanData.status;
+          if (st === 'completed' || st === 'failed') {
+            const openCount = (scanData.results && scanData.results.open_ports) ? scanData.results.open_ports.length : 0;
+            await handleScanFinished(activeScanId, st, openCount, scanData.error_message || null);
+          } else if (st === 'running') {
+            setProgress(scanData.progress || 0);
+            document.getElementById('metaStatus').textContent = st;
+            if (!document.getElementById('terminalProgressPct')) {
+              term(`<span class="t-cyan">[SCANNING]</span> Progress: <span id="terminalProgressPct">0</span>%`);
+            }
+            const el = document.getElementById('terminalProgressPct');
+            if (el) el.textContent = scanData.progress || 0;
+          }
+        }, 1500);
+      } else {
+        term(`<span class="t-red">[ERROR]</span> ${data.error || 'Failed to start scan.'}`);
+        document.getElementById('formAlert').textContent = data.error || 'Failed to start scan.';
+        document.getElementById('formAlert').classList.remove('hidden');
+        Api.toast(data.error || 'Failed', 'error');
+      }
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>

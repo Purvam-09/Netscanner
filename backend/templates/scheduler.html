@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scheduler — NetScanner</title>
+  <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><span class="brand-icon">⬡</span>
+      <div>NETSCANNER<span class="brand-version">v2.0 // NETWORK INTEL</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="{{ url_for('pages.index') }}">◈ &nbsp;Dashboard</a>
+      <a class="nav-link" href="{{ url_for('pages.discovery') }}">⊙ &nbsp;Host Discovery</a>
+      <a class="nav-link" href="{{ url_for('pages.scan') }}">⊕ &nbsp;Port Scan</a>
+      <a class="nav-link" href="{{ url_for('pages.network_radar') }}">◌ &nbsp;Network Radar</a>
+      <a class="nav-link" href="{{ url_for('pages.log_analyzer') }}">☷ &nbsp;Log Analyzer</a>
+      <a class="nav-link" href="{{ url_for('pages.results') }}">≡ &nbsp;Results</a>
+      <a class="nav-link active" href="{{ url_for('pages.scheduler') }}">⏲ &nbsp;Scheduler</a>
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="{{ url_for('pages.profile') }}">◉ &nbsp;Profile</a>
+      <a class="nav-link hidden" href="{{ url_for('pages.admin') }}" id="navAdmin">⚙ &nbsp;Admin</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">⏏ &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Scheduler</div>
+        <div class="page-subtitle">RECURRING AUTOMATED SCANS</div>
+      </div>
+      <button class="btn btn-primary" id="openCreateBtn">⊕ New Schedule</button>
+    </div>
+
+    <div id="alertBox" class="alert alert-error hidden"></div>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Label</th><th>Target</th><th>Type</th><th>Ports</th>
+              <th>Cron</th><th>Last Run</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="schedBody">
+          <tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted)">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Cron reference -->
+    <div class="panel mt-3">
+      <div class="panel-title">CRON EXPRESSION REFERENCE</div>
+      <div style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-secondary)">
+        <div style="margin-bottom:0.5rem">Format: <span class="text-cyan">MINUTE HOUR DAY MONTH WEEKDAY</span></div>
+        <table class="data-table" style="max-width:600px">
+          <thead><tr><th>Expression</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>0 */6 * * *</td><td>Every 6 hours</td></tr>
+            <tr><td>0 2 * * *</td><td>Daily at 02:00 UTC</td></tr>
+            <tr><td>0 0 * * 0</td><td>Weekly, Sunday midnight</td></tr>
+            <tr><td>*/30 * * * *</td><td>Every 30 minutes</td></tr>
+            <tr><td>0 8 1 * *</td><td>1st of every month at 08:00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Create Modal -->
+<div class="modal-backdrop hidden" id="createModal">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">NEW SCHEDULED SCAN</div>
+      <button class="modal-close" id="createClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="createAlert" class="alert alert-error hidden"></div>
+      <form id="createForm" novalidate>
+        <div class="form-group">
+          <label class="form-label">Label (optional)</label>
+          <input class="form-control" type="text" id="cfLabel" placeholder="e.g. Daily LAN Scan">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target</label>
+          <input class="form-control" type="text" id="cfTarget" placeholder="192.168.1.0/24" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Port Range</label>
+          <input class="form-control" type="text" id="cfPorts" placeholder="1-1000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Scan Type</label>
+          <select class="form-control" id="cfType">
+            <option value="tcp-connect">TCP Connect</option>
+            <option value="tcp-syn">TCP SYN</option>
+            <option value="udp">UDP</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cron Expression</label>
+          <input class="form-control" type="text" id="cfCron" placeholder="0 */6 * * *" required>
+          <div class="form-hint">5-field cron: MINUTE HOUR DAY MONTH WEEKDAY</div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="createCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="createSaveBtn">⊕ Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+<script src="/assets/js/api.js"></script>
+<script>
+  function esc(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  async function loadScheduled() {
+    const data = await Api.getJSON('/api/scheduler/');
+    const tbody = document.getElementById('schedBody');
+    const list  = data?.scheduled || [];
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text-muted)">
+        No scheduled scans. Create one above.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(s => `
+      <tr data-id="${s.id}">
+        <td class="mono">${esc(s.label)||'—'}</td>
+        <td class="text-cyan">${esc(s.target)}</td>
+        <td class="mono">${esc(s.scan_type)}</td>
+        <td class="mono">${esc(s.ports)}</td>
+        <td class="mono">${esc(s.cron_expr)}</td>
+        <td class="mono" style="color:var(--text-muted)">${s.last_run?(s.last_run.slice(0,16)):('never')}</td>
+        <td>${s.enabled
+          ? '<span class="badge badge-completed">ACTIVE</span>'
+          : '<span class="badge badge-failed">PAUSED</span>'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-secondary btn-sm toggle-btn" data-id="${s.id}" data-enabled="${s.enabled?1:0}">
+            ${s.enabled?'Pause':'Resume'}
+          </button>
+          <button class="btn btn-danger btn-sm del-btn" data-id="${s.id}" style="margin-left:4px">Del</button>
+        </td>
+      </tr>`).join('');
+
+    tbody.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id      = btn.dataset.id;
+        const enabled = btn.dataset.enabled === '1';
+        const res = await Api.patch(`/api/scheduler/${id}`, { enabled: !enabled });
+        if (res?.ok) { Api.toast(enabled?'Paused':'Resumed','success'); loadScheduled(); }
+        else Api.toast('Failed','error');
+      });
+    });
+    tbody.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Delete schedule #${btn.dataset.id}?`)) return;
+        const res = await Api.del(`/api/scheduler/${btn.dataset.id}`);
+        if (res?.ok) { Api.toast('Deleted','success'); loadScheduled(); }
+        else Api.toast('Failed','error');
+      });
+    });
+  }
+
+  document.getElementById('openCreateBtn').addEventListener('click', () =>
+    document.getElementById('createModal').classList.remove('hidden'));
+  document.getElementById('createClose').addEventListener('click', () =>
+    document.getElementById('createModal').classList.add('hidden'));
+  document.getElementById('createCancelBtn').addEventListener('click', () =>
+    document.getElementById('createModal').classList.add('hidden'));
+
+  document.getElementById('createSaveBtn').addEventListener('click', async () => {
+    const target    = document.getElementById('cfTarget').value.trim();
+    const ports     = document.getElementById('cfPorts').value.trim();
+    const scan_type = document.getElementById('cfType').value;
+    const cron_expr = document.getElementById('cfCron').value.trim();
+    const label     = document.getElementById('cfLabel').value.trim();
+
+    if (!target || !cron_expr) {
+      document.getElementById('createAlert').textContent = 'Target and cron expression required.';
+      document.getElementById('createAlert').classList.remove('hidden');
+      return;
+    }
+
+    const res = await Api.post('/api/scheduler/', {
+      target, port_range: ports||'1-1000', scan_type, cron_expr, label,
+    });
+    const data = res ? await res.json() : null;
+    if (res?.ok) {
+      document.getElementById('createModal').classList.add('hidden');
+      Api.toast('Scheduled scan created!', 'success');
+      loadScheduled();
+    } else {
+      document.getElementById('createAlert').textContent = data?.error || 'Failed';
+      document.getElementById('createAlert').classList.remove('hidden');
+    }
+  });
+
+  async function init() {
+    const me = await Api.initPage();
+    if (!me?.authenticated) return;
+    document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); Api.logout(); });
+    loadScheduled();
+  }
+  init();
+</script>
+</body>
+</html>

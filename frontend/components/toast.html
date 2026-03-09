@@ -1,0 +1,52 @@
+<!--
+  TOAST TEMPLATE (reference)
+  ──────────────────────────
+  This is a reference snippet — toasts are created dynamically
+  by api.js (Api.toast()). You do NOT need to include this in pages.
+
+  The toast-stack div is auto-created by api.js if it doesn't exist.
+  To pre-place it (recommended for fixed positioning):
+
+  Usage — add to <body> of any page:
+  ────────────────────────────────────
+  <div class="toast-stack" id="toastStack"></div>
+
+  Then call:
+    Api.toast('Message', 'success')   → green dot
+    Api.toast('Message', 'error')     → red dot
+    Api.toast('Message', 'info')      → cyan dot
+    Api.toast('Message', 'warning')   → yellow dot
+
+  Toast auto-dismisses after 4 seconds.
+
+  Manual HTML structure (for reference):
+  ────────────────────────────────────────
+-->
+
+<div class="toast-stack" id="toastStack">
+
+    <!-- Example: success toast -->
+    <div class="toast toast-success">
+      <span class="toast-dot"></span>
+      <span>Scan completed successfully.</span>
+    </div>
+  
+    <!-- Example: error toast -->
+    <div class="toast toast-error">
+      <span class="toast-dot"></span>
+      <span>Connection refused on target.</span>
+    </div>
+  
+    <!-- Example: info toast -->
+    <div class="toast toast-info">
+      <span class="toast-dot"></span>
+      <span>Scan #42 is now running.</span>
+    </div>
+  
+    <!-- Example: warning toast -->
+    <div class="toast toast-warning">
+      <span class="toast-dot"></span>
+      <span>Port range capped at 1000 ports.</span>
+    </div>
+  
+  </div>

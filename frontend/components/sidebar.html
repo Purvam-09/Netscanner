@@ -1,0 +1,54 @@
+<!-- 
+  SIDEBAR TEMPLATE
+  Copy this into every main page. IDs are used by api.js / page scripts.
+  Set the active nav-link by adding class="nav-link active" to the correct <a>.
+-->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">⬡</span>
+      <div>
+        NETSCANNER
+        <span class="brand-version">v2.0 // NETWORK INTEL</span>
+      </div>
+    </div>
+  
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">MAIN</div>
+      <a class="nav-link" href="/" id="navDashboard">
+        <i>◈</i> Dashboard
+      </a>
+      <a class="nav-link" href="/discovery" id="navDiscovery">
+        <i>⊙</i> Host Discovery
+      </a>
+      <a class="nav-link" href="/scan" id="navScan">
+        <i>⊕</i> Port Scan
+      </a>
+      <a class="nav-link" href="/results" id="navResults">
+        <i>≡</i> Results
+      </a>
+      <a class="nav-link" href="/scheduler" id="navScheduler">
+        <i>⏲</i> Scheduler
+      </a>
+  
+      <div class="nav-section-label" style="margin-top:0.5rem">ACCOUNT</div>
+      <a class="nav-link" href="/profile" id="navProfile">
+        <i>◉</i> Profile
+      </a>
+      <a class="nav-link hidden" href="/admin" id="navAdmin">
+        <i>⚙</i> Admin
+      </a>
+    </nav>
+  
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar" id="sidebarAvatar">U</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebarUsername">…</div>
+          <div class="user-role" id="sidebarRole">user</div>
+        </div>
+      </div>
+      <a class="nav-link" href="#" id="logoutBtn">
+        <i>⏏</i> Logout
+      </a>
+    </div>
+  </aside>
