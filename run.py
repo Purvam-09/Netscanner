@@ -1,13 +1,3 @@
-"""
-run.py
--------
-NetScanner entry point.
-
-Usage:
-    python run.py
-
-Then open: http://localhost:5000/login
-"""
 import logging
 import os
 import signal
@@ -24,8 +14,8 @@ logger = logging.getLogger("netscanner")
 app = create_app(os.environ.get("FLASK_ENV", "development"))
 
 if __name__ == "__main__":
-    host = app.config.get("FLASK_HOST", "0.0.0.0") if hasattr(app.config, "get") else "0.0.0.0"
-    port = int(os.environ.get("FLASK_PORT", 5000))
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", os.environ.get("FLASK_PORT", 5000)))
 
     def shutdown(sig=None, frame=None):
         logger.info("Shutdown signal received (Ctrl+C). Stopping server…")
@@ -34,13 +24,18 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
 
-    logger.info("NetScanner v2.0 — http://%s:%s | Login: http://localhost:%s/login", host, port, port)
+    logger.info(
+        "NetScanner v2.0 — http://%s:%s | Login: http://localhost:%s/login",
+        host,
+        port,
+        port,
+    )
 
     socketio.run(
         app,
         host=host,
         port=port,
         debug=app.config.get("DEBUG", True),
-        use_reloader=False,  # Reloader breaks background threads (scan worker, scheduler)
+        use_reloader=False,
         log_output=True,
     )
