@@ -1,5 +1,5 @@
 # NetScanner
-Web Based Network Scanner
+
 Web-based network scanner with Nmap-inspired scan modes. **No Nmap binary** — custom Python socket-based engine.
 
 ## Quick Start
