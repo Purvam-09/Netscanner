@@ -51,13 +51,16 @@
     </aside>
 
     <!-- ── Main ───────────────────────────────────────── -->
-    <main class="main-content col-12 col-md-9 col-lg-10">
+    <main class="main-content">
       <div class="page-header">
         <div>
           <div class="page-title">Dashboard</div>
           <div class="page-subtitle" id="dashboardTs">LOADING SYSTEM STATUS…</div>
         </div>
-        <a href="{{ url_for('pages.scan') }}" class="btn btn-primary">⊕ &nbsp;Port Scan</a>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn btn-secondary btn-sm" id="sidebarToggle" aria-label="Toggle navigation">☰</button>
+          <a href="{{ url_for('pages.scan') }}" class="btn btn-primary">⊕ &nbsp;Port Scan</a>
+        </div>
       </div>
 
       <!-- Stats row -->

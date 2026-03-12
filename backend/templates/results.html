@@ -47,7 +47,8 @@
         <div class="page-title">Scan Results</div>
         <div class="page-subtitle" id="resultsMeta">LOADING…</div>
       </div>
-      <div style="display:flex;gap:0.75rem">
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" id="sidebarToggle" aria-label="Toggle navigation">☰</button>
         <a href="/api/export/scans/csv" class="btn btn-secondary btn-sm" title="Export all scans">⬇ Export All CSV</a>
         <a href="{{ url_for('pages.discovery') }}" class="btn btn-primary btn-sm">⊙ Host Discovery</a>
         <a href="{{ url_for('pages.scan_port') }}" class="btn btn-primary btn-sm">⊕ Port Scan</a>

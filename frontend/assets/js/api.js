@@ -135,6 +135,17 @@ const Api = (() => {
         userAvatar.textContent = (data.username || 'U')[0].toUpperCase();
         if (data.avatar_color) userAvatar.style.borderColor = data.avatar_color;
       }
+
+      // Sidebar toggle (mobile)
+      const sidebar = document.querySelector('.sidebar');
+      const toggle  = document.getElementById('sidebarToggle');
+      if (sidebar && toggle && !toggle.dataset.bound) {
+        toggle.dataset.bound = '1';
+        toggle.addEventListener('click', () => {
+          const isOpen = sidebar.classList.toggle('is-open');
+          document.body.classList.toggle('sidebar-open', isOpen);
+        });
+      }
   
       return data;
     }
