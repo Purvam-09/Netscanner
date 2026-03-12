@@ -215,8 +215,7 @@
    /* ── Main content ────────────────────────────────────────────────────────── */
    .main-content {
      grid-column: 2;
-     /* margin-left: var(--sidebar-w); */
-     padding: 2rem 2.5rem;
+     padding: 1.5rem 1.5rem;
      min-height: 100vh;
    }
    
@@ -778,15 +777,24 @@
    /* ── Responsive ──────────────────────────────────────────────────────────── */
    @media (max-width: 900px) {
      :root { --sidebar-w: 200px; }
-     .main-content { padding: 1.25rem 1.5rem; }
+     .main-content { padding: 1.25rem 1rem; }
    }
    
    @media (max-width: 640px) {
      .app-wrapper { grid-template-columns: 1fr; }
      .sidebar {
-       position: relative; width: 100%; height: auto;
-       flex-direction: row; flex-wrap: wrap;
+       position: relative;
+       width: 100%;
+       height: auto;
      }
-     .main-content { margin-left: 0; }
-     .stats-grid { grid-template-columns: 1fr 1fr; }
+     .main-content {
+       margin-left: 0;
+       padding: 1rem 0.75rem 1.5rem;
+     }
+   }
+
+   /* ── Responsive charts ───────────────────────────────────────────────────── */
+   canvas {
+     width: 100% !important;
+     height: auto !important;
    }
