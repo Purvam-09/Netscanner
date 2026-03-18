@@ -5,6 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log Analyzer — NetScanner</title>
   <link rel="stylesheet" href="/assets/css/cyberpunk.css">
+  <style>
+    .severity-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .severity-badge.low { background-color: #114b2b; color: #9fffbf; }
+    .severity-badge.medium { background-color: #5a4b1a; color: #ffe58a; }
+    .severity-badge.high { background-color: #5a2b14; color: #ffb68a; }
+    .severity-badge.critical { background-color: #5a1414; color: #ff9b9b; }
+    .issues-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .issues-table th,
+    .issues-table td {
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      vertical-align: top;
+    }
+    .issues-table th {
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+    }
+    .issues-empty {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+    .severity-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .severity-card {
+      padding: 0.85rem 1rem;
+      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .severity-card-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.75;
+      margin-bottom: 0.25rem;
+    }
+    .severity-card-value {
+      font-size: 1.3rem;
+    }
+  </style>
 </head>
 <body>
 <div class="app-wrapper">
@@ -85,6 +143,48 @@
         <div class="stat-card purple" style="padding:1rem">
           <div class="stat-label">Failed Logins</div>
           <div class="stat-value" id="statFailedLogins">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mt-3 hidden" id="issuesPanel">
+      <div class="panel-title">DETECTED ISSUES</div>
+      <div id="issuesContainer">
+        <div class="issues-empty" id="issuesEmptyMessage">No threats detected.</div>
+        <div class="table-wrapper hidden" id="issuesTableWrapper">
+          <table class="issues-table">
+            <thead>
+              <tr>
+                <th style="width: 12%">IP</th>
+                <th style="width: 38%">Issue</th>
+                <th style="width: 12%">Severity</th>
+                <th style="width: 38%">Recommendation</th>
+              </tr>
+            </thead>
+            <tbody id="issuesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel mt-3 hidden" id="severityPanel">
+      <div class="panel-title">SEVERITY BREAKDOWN</div>
+      <div class="severity-grid" id="severityGrid">
+        <div class="severity-card">
+          <div class="severity-card-label">Low</div>
+          <div class="severity-card-value" id="severityLow">0</div>
+        </div>
+        <div class="severity-card">
+          <div class="severity-card-label">Medium</div>
+          <div class="severity-card-value" id="severityMedium">0</div>
+        </div>
+        <div class="severity-card">
+          <div class="severity-card-label">High</div>
+          <div class="severity-card-value" id="severityHigh">0</div>
+        </div>
+        <div class="severity-card">
+          <div class="severity-card-label">Critical</div>
+          <div class="severity-card-value" id="severityCritical">0</div>
         </div>
       </div>
     </div>
@@ -171,6 +271,9 @@
       document.getElementById('statWarnings').textContent = data.warnings ?? 0;
       document.getElementById('statFailedLogins').textContent = data.failed_logins ?? 0;
 
+      renderIssues(Array.isArray(data.issues) ? data.issues : []);
+      renderSummary(data.summary_dashboard || {});
+
       Api.toast('Log analyzed successfully.', 'success');
     } catch (e) {
       btn.disabled = false;
@@ -179,6 +282,81 @@
       showError('Unexpected error during analysis.');
       Api.toast('Unexpected error during analysis.', 'error');
     }
+  }
+
+  function createSeverityBadge(severity) {
+    if (!severity || typeof severity !== 'string') {
+      return '<span class="severity-badge">N/A</span>';
+    }
+    const value = severity.toLowerCase();
+    const cls =
+      value === 'low' ? 'low' :
+      value === 'medium' ? 'medium' :
+      value === 'high' ? 'high' :
+      value === 'critical' ? 'critical' : '';
+    const label = severity[0].toUpperCase() + severity.slice(1).toLowerCase();
+    return `<span class="severity-badge ${cls}">${label}</span>`;
+  }
+
+  function renderIssues(issues) {
+    const panel = document.getElementById('issuesPanel');
+    const emptyMessage = document.getElementById('issuesEmptyMessage');
+    const tableWrapper = document.getElementById('issuesTableWrapper');
+    const tbody = document.getElementById('issuesTableBody');
+
+    panel.classList.remove('hidden');
+
+    while (tbody.firstChild) {
+      tbody.removeChild(tbody.firstChild);
+    }
+
+    if (!issues || !issues.length) {
+      emptyMessage.classList.remove('hidden');
+      tableWrapper.classList.add('hidden');
+      return;
+    }
+
+    emptyMessage.classList.add('hidden');
+    tableWrapper.classList.remove('hidden');
+
+    issues.forEach((item) => {
+      const tr = document.createElement('tr');
+
+      const ip = item.ip || '—';
+      const issueText = item.issue || '—';
+      const severity = item.severity || (item.details && item.details.severity) || '';
+      const rec = item.recommendation || '—';
+
+      tr.innerHTML = `
+        <td>${ip}</td>
+        <td>${issueText}</td>
+        <td>${createSeverityBadge(severity)}</td>
+        <td>${rec}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderSummary(summary) {
+    const panel = document.getElementById('severityPanel');
+    if (!summary || typeof summary !== 'object') {
+      panel.classList.add('hidden');
+      return;
+    }
+
+    const bySeverity = summary.by_severity || {};
+    const low = bySeverity.Low || bySeverity.low || 0;
+    const medium = bySeverity.Medium || bySeverity.medium || 0;
+    const high = bySeverity.High || bySeverity.high || 0;
+    const critical = bySeverity.Critical || bySeverity.critical || 0;
+
+    document.getElementById('severityLow').textContent = low;
+    document.getElementById('severityMedium').textContent = medium;
+    document.getElementById('severityHigh').textContent = high;
+    document.getElementById('severityCritical').textContent = critical;
+
+    panel.classList.remove('hidden');
   }
 
   async function init() {
