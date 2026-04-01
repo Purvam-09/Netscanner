@@ -39,6 +39,62 @@
      --font-mono:     'Share Tech Mono', 'Courier New', monospace;
      --font-display:  'Rajdhani', 'Segoe UI', sans-serif;
    }
+
+  /* Light theme palette (applied when body has .theme-light) */
+  body.theme-light {
+    --bg-void:       #f3f7fb;
+    --bg-panel:      #ffffff;
+    --bg-surface:    #eef4fb;
+    --bg-elevated:   #f7f9fd;
+    --bg-input:      #ffffff;
+
+    --accent-green:  #0f8f62;
+    --accent-cyan:   #0a7fb8;
+    --accent-red:    #c7334e;
+    --accent-yellow: #b48600;
+    --accent-purple: #7f4bb6;
+
+    --text-primary:  #0f2436;
+    --text-secondary:#23465f;
+    --text-muted:    #587388;
+    --text-code:     #0f8f62;
+
+    --border:        rgba(15, 143, 98, 0.18);
+    --border-bright: rgba(15, 143, 98, 0.4);
+    --border-dim:    rgba(10, 127, 184, 0.12);
+
+    --glow-green:    0 0 10px rgba(15, 143, 98, 0.22);
+    --glow-cyan:     0 0 10px rgba(10, 127, 184, 0.22);
+    --glow-red:      0 0 10px rgba(199, 51, 78, 0.22);
+  }
+
+  body.theme-light {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  body.theme-light .page-title,
+  body.theme-light .panel-title,
+  body.theme-light .stat-value,
+  body.theme-light .form-label,
+  body.theme-light .data-table thead th {
+    font-weight: 700;
+  }
+
+  body.theme-light .nav-link,
+  body.theme-light .data-table tbody td,
+  body.theme-light .form-control,
+  body.theme-light .page-subtitle,
+  body.theme-light .form-hint,
+  body.theme-light .user-info .user-name,
+  body.theme-light .user-info .user-role {
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  body.theme-light .form-control::placeholder {
+    color: var(--text-muted);
+  }
    
    /* ── Reset & Base ────────────────────────────────────────────────────────── */
    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,21 +115,7 @@
      display: block;
    }
    
-   /* Scanline overlay */
-   body::before {
-     content: '';
-     position: fixed;
-     inset: 0;
-     background: repeating-linear-gradient(
-       0deg,
-       transparent,
-       transparent 2px,
-       rgba(0,0,0,0.08) 2px,
-       rgba(0,0,0,0.08) 4px
-     );
-     pointer-events: none;
-     z-index: 9999;
-   }
+  /* Scanline overlay removed: it caused horizontal line illusion in UI */
    
    a { color: var(--accent-cyan); text-decoration: none; }
    a:hover { color: var(--accent-green); text-decoration: none; }
@@ -659,6 +701,19 @@
    .toast-error   .toast-dot { background: var(--accent-red);   box-shadow: var(--glow-red); }
    .toast-info    .toast-dot { background: var(--accent-cyan);  box-shadow: var(--glow-cyan); }
    .toast-warning .toast-dot { background: var(--accent-yellow);}
+
+  /* Bootstrap table-dark override when light theme is active */
+  body.theme-light .table-dark {
+    --bs-table-color: var(--text-secondary);
+    --bs-table-bg: transparent;
+    --bs-table-border-color: var(--border-dim);
+    --bs-table-striped-bg: rgba(10, 127, 184, 0.04);
+    --bs-table-striped-color: var(--text-secondary);
+    --bs-table-active-bg: rgba(15, 143, 98, 0.08);
+    --bs-table-active-color: var(--text-primary);
+    --bs-table-hover-bg: rgba(15, 143, 98, 0.07);
+    --bs-table-hover-color: var(--text-primary);
+  }
    
    @keyframes slideIn {
      from { opacity: 0; transform: translateX(20px); }
@@ -751,6 +806,19 @@
    .terminal .t-yellow { color: var(--accent-yellow); }
    .terminal .t-white  { color: var(--text-primary); }
    .terminal .t-prompt::before { content: '> '; color: var(--text-muted); }
+
+  body.theme-light .terminal {
+    background: #f6f9fd;
+    border-color: var(--border);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  body.theme-light .terminal .t-dim { color: var(--text-muted); }
+  body.theme-light .terminal .t-cyan { color: #0a7fb8; }
+  body.theme-light .terminal .t-red { color: #c7334e; }
+  body.theme-light .terminal .t-yellow { color: #a87700; }
+  body.theme-light .terminal .t-white { color: var(--text-primary); }
    
    /* ── CVE severity colours ────────────────────────────────────────────────── */
    .sev-critical { color: #ff1a1a; }

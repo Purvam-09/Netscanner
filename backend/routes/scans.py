@@ -72,7 +72,7 @@ def list_scans():
             rows = conn.execute(
                 """SELECT id, target, scan_type, ports, status, progress,
                           created_at, completed_at, duration_seconds
-                   FROM scans WHERE user_id = ?
+                   FROM s   cans WHERE user_id = ?
                    ORDER BY created_at DESC""",
                 (user_id,),
             ).fetchall()

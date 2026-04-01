@@ -13,6 +13,7 @@ const Api = (() => {
   
     const CSRF_KEY  = 'csrf_token';
     const AUTH_KEY  = 'auth';
+    const THEME_KEY = 'theme';
   
     // ── CSRF ─────────────────────────────────────────────────────────────────
   
@@ -114,10 +115,57 @@ const Api = (() => {
       d.textContent = String(s);
       return d.innerHTML;
     }
+
+    // ── Theme (dark/light) ────────────────────────────────────────────────────
+
+    function getTheme() {
+      return localStorage.getItem(THEME_KEY) || 'dark';
+    }
+
+    function applyTheme(theme) {
+      const next = theme === 'light' ? 'light' : 'dark';
+      document.body.classList.toggle('theme-light', next === 'light');
+      document.body.classList.toggle('theme-dark', next !== 'light');
+      localStorage.setItem(THEME_KEY, next);
+      updateThemeToggleUI(next);
+    }
+
+    function toggleTheme() {
+      applyTheme(getTheme() === 'dark' ? 'light' : 'dark');
+    }
+
+    function updateThemeToggleUI(theme) {
+      const icon = document.getElementById('themeIcon');
+      const label = document.getElementById('themeLabel');
+      const btn = document.getElementById('themeToggle');
+      if (icon) icon.textContent = theme === 'light' ? '●' : '◑';
+      if (label) label.textContent = theme === 'light' ? 'Dark Mode' : 'Light Mode';
+      if (btn) btn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+
+    function ensureThemeToggle() {
+      const sidebarFooter = document.querySelector('.sidebar-footer');
+      if (!sidebarFooter || document.getElementById('themeToggle')) return;
+
+      const btn = document.createElement('a');
+      btn.href = '#';
+      btn.id = 'themeToggle';
+      btn.className = 'nav-link';
+      btn.innerHTML = '<span id="themeIcon">◑</span><span id="themeLabel">Light Mode</span>';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleTheme();
+      });
+      sidebarFooter.insertBefore(btn, sidebarFooter.firstChild);
+      updateThemeToggleUI(getTheme());
+    }
   
     // ── Sidebar admin nav reveal ──────────────────────────────────────────────
   
     async function initPage() {
+      ensureThemeToggle();
+      applyTheme(getTheme());
+
       const data = await refreshAuth();
       if (!data || !data.authenticated) return data;
   
@@ -162,5 +210,5 @@ const Api = (() => {
     // ── Public API ────────────────────────────────────────────────────────────
   
     return { get, post, patch, del, getJSON, request, getCsrf, setCsrf,
-             refreshAuth, toast, initPage, logout, _esc };
+             refreshAuth, toast, initPage, logout, _esc, getTheme, applyTheme, toggleTheme };
   })();

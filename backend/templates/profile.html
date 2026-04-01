@@ -155,9 +155,20 @@
     if (!me?.authenticated) return;
     document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); Api.logout(); });
 
+    // Immediate sidebar/profile fallback from /me so username never appears stale.
+    const meName = (me.username || '').trim();
+    if (meName) {
+      const sidebarNameEl = document.getElementById('sidebarUsername');
+      const profNameEl = document.getElementById('profUsername');
+      if (sidebarNameEl) sidebarNameEl.textContent = meName;
+      if (profNameEl) profNameEl.textContent = meName;
+    }
+
     const prof = await Api.getJSON('/api/profile/');
     if (prof) {
-      document.getElementById('profUsername').textContent  = prof.username;
+      const resolvedName = (prof.username || me.username || 'User').trim();
+      document.getElementById('profUsername').textContent  = resolvedName;
+      document.getElementById('sidebarUsername').textContent = resolvedName;
       document.getElementById('profEmail').textContent     = prof.email;
       document.getElementById('profCreated').textContent   = (prof.created_at||'').slice(0,10);
       document.getElementById('profLastLogin').textContent = prof.last_login?(prof.last_login.slice(0,16)):('never');
@@ -168,11 +179,11 @@
       document.getElementById('profRoleBadge').innerHTML = badge;
 
       const av = document.getElementById('profileAvatar');
-      av.textContent = (prof.username||'U')[0].toUpperCase();
+      av.textContent = (resolvedName || 'U')[0].toUpperCase();
       av.style.borderColor = prof.avatar_color || '#00ff9f';
       av.style.color       = prof.avatar_color || '#00ff9f';
 
-      document.getElementById('pfUsername').value = prof.username;
+      document.getElementById('pfUsername').value = resolvedName;
       document.getElementById('pfColor').value    = prof.avatar_color || '#00ff9f';
     }
 

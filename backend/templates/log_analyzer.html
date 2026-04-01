@@ -62,6 +62,31 @@
     .severity-card-value {
       font-size: 1.3rem;
     }
+    body.theme-light .issues-table th,
+    body.theme-light .issues-table td,
+    body.theme-light .issues-empty,
+    body.theme-light .severity-card-label,
+    body.theme-light .severity-card-value {
+      color: var(--text-primary);
+      opacity: 1;
+      font-weight: 600;
+    }
+    body.theme-light .issues-table th,
+    body.theme-light .severity-card-label {
+      color: var(--text-secondary);
+    }
+    body.theme-light .issues-table th,
+    body.theme-light .issues-table td {
+      border-bottom: 1px solid var(--border-dim);
+    }
+    body.theme-light .severity-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+    }
+    body.theme-light .severity-badge.low { background-color: #d7f6e4; color: #0f8f62; }
+    body.theme-light .severity-badge.medium { background-color: #fff2cc; color: #8a6500; }
+    body.theme-light .severity-badge.high { background-color: #ffe0cc; color: #ad4f08; }
+    body.theme-light .severity-badge.critical { background-color: #ffd6dd; color: #b32943; }
   </style>
 </head>
 <body>
